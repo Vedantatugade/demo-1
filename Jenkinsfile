@@ -8,6 +8,12 @@ environment {
 
 stages {
 
+    stage('Clean Workspace') {
+        steps {
+            deleteDir()
+        }
+    }
+
     stage('Checkout Code') {
         steps {
             checkout scm
@@ -58,7 +64,11 @@ stages {
                 passwordVariable: 'AWS_SECRET_ACCESS_KEY'
             )]) {
                 dir('terraform') {
-                    bat 'terraform output -raw web_public_ip > ip.txt'
+                    bat '''
+                    terraform output
+                    terraform output -raw web_public_ip > ip.txt
+                    type ip.txt
+                    '''
                 }
             }
         }
@@ -68,8 +78,18 @@ stages {
         steps {
             bat '''
             cd ansible
+
+            if not exist ..\\terraform\\ip.txt (
+                echo ERROR: ip.txt not found
+                exit 1
+            )
+
             echo [web] > inventory
-            for /f %%i in (..\\terraform\\ip.txt) do echo %%i ansible_user=ec2-user ansible_ssh_private_key_file=../my-tf-key.pem >> inventory
+            for /f %%i in (..\\terraform\\ip.txt) do (
+                echo %%i ansible_user=ec2-user ansible_ssh_private_key_file=../my-tf-key.pem >> inventory
+            )
+
+            type inventory
             '''
         }
     }
@@ -87,10 +107,10 @@ stages {
 
 post {
     success {
-        echo ' Deployment successful!'
+        echo '✅ Deployment successful!'
     }
     failure {
-        echo ' Pipeline failed. Check logs.'
+        echo '❌ Pipeline failed. Check logs.'
     }
 }
 ```
