@@ -70,25 +70,28 @@ pipeline {
         }
 
         stage('Terraform Output') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'aws-credentials-1',
-            usernameVariable: 'AWS_ACCESS_KEY_ID',
-            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-        )]) {
-            dir('terraform') {
-                bat '''
-                terraform output -raw web_public_ip > ip.txt
-                '''
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    dir('terraform') {
+                        bat 'terraform output -raw web_public_ip > ip.txt'
+                    }
+                }
             }
         }
-    }
-}
 
         stage('Create Ansible Inventory') {
             steps {
                 bat '''
                 cd ansible
+
+                if not exist ..\\terraform\\ip.txt (
+                    echo ERROR: ip.txt not found
+                    exit 1
+                )
 
                 echo [web] > inventory
                 for /f %%i in (..\\terraform\\ip.txt) do (
@@ -100,7 +103,12 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                bat 'ansible-playbook -i ansible/inventory ansible/playbook.yml'
+                bat '''
+                cd ansible
+
+                wsl chmod 400 ../my-tf-key.pem
+                wsl ansible-playbook -i inventory playbook.yml
+                '''
             }
         }
     }
