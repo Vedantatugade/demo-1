@@ -1,4 +1,30 @@
 #################################
+# TERRAFORM BACKEND (STATE FIX)
+#################################
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+  bucket         = "demo-capstone-project"
+  key            = "demo-1/terraform.tfstate"
+  region         = "us-east-1"
+  dynamodb_table = "terraform-lock"
+}
+}
+
+#################################
+# PROVIDER
+#################################
+provider "aws" {
+  region = "us-east-1"
+}
+
+#################################
 # EXISTING VPC & SUBNETS
 #################################
 data "aws_vpc" "existing_vpc" {
@@ -17,10 +43,10 @@ data "aws_subnet" "private_subnet" {
 # SECURITY GROUP - WEB
 #################################
 resource "aws_security_group" "web_sg" {
-  name   = "web-tier-sg-1"
-  vpc_id = data.aws_vpc.existing_vpc.id
+  name_prefix = "web-tier-sg-"   # avoids duplicate issue
+  vpc_id      = data.aws_vpc.existing_vpc.id
 
-  # HTTP ONLY from ALB SG
+  # HTTP from ALB
   ingress {
     from_port       = 80
     to_port         = 80
@@ -44,7 +70,7 @@ resource "aws_security_group" "web_sg" {
   }
 
   tags = {
-    Name = "web-tier-sg-1"
+    Name = "web-tier-sg"
   }
 }
 
@@ -52,10 +78,10 @@ resource "aws_security_group" "web_sg" {
 # SECURITY GROUP - APP
 #################################
 resource "aws_security_group" "app_sg" {
-  name   = "app-tier-sg-1"
-  vpc_id = data.aws_vpc.existing_vpc.id
+  name_prefix = "app-tier-sg-"
+  vpc_id      = data.aws_vpc.existing_vpc.id
 
-  # Allow app traffic ONLY from web tier
+  # App traffic only from Web SG
   ingress {
     from_port       = 4000
     to_port         = 4000
@@ -63,7 +89,7 @@ resource "aws_security_group" "app_sg" {
     security_groups = [aws_security_group.web_sg.id]
   }
 
-  # SSH ONLY from web tier
+  # SSH only from Web SG
   ingress {
     from_port       = 22
     to_port         = 22
@@ -79,7 +105,7 @@ resource "aws_security_group" "app_sg" {
   }
 
   tags = {
-    Name = "app-tier-sg-1"
+    Name = "app-tier-sg"
   }
 }
 
