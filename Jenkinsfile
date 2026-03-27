@@ -30,9 +30,6 @@ pipeline {
             }
         }
 
-        #################################
-        # TERRAFORM INIT (WITH AWS CREDS)
-        #################################
         stage('Terraform Init') {
             steps {
                 withCredentials([usernamePassword(
@@ -47,9 +44,6 @@ pipeline {
             }
         }
 
-        #################################
-        # TERRAFORM VALIDATE
-        #################################
         stage('Terraform Validate') {
             steps {
                 dir('terraform') {
@@ -58,9 +52,6 @@ pipeline {
             }
         }
 
-        #################################
-        # TERRAFORM PLAN
-        #################################
         stage('Terraform Plan') {
             steps {
                 withCredentials([usernamePassword(
@@ -75,9 +66,6 @@ pipeline {
             }
         }
 
-        #################################
-        # TERRAFORM APPLY
-        #################################
         stage('Terraform Apply') {
             steps {
                 withCredentials([usernamePassword(
@@ -92,9 +80,6 @@ pipeline {
             }
         }
 
-        #################################
-        # TERRAFORM OUTPUT
-        #################################
         stage('Terraform Output') {
             steps {
                 withCredentials([usernamePassword(
@@ -113,9 +98,6 @@ pipeline {
             }
         }
 
-        #################################
-        # CREATE ANSIBLE INVENTORY
-        #################################
         stage('Create Ansible Inventory') {
             steps {
                 bat '''
@@ -136,9 +118,6 @@ pipeline {
             }
         }
 
-        #################################
-        # RUN ANSIBLE PLAYBOOK
-        #################################
         stage('Run Ansible Playbook') {
             steps {
                 bat '''
@@ -148,15 +127,12 @@ pipeline {
         }
     }
 
-    #################################
-    # POST ACTIONS
-    #################################
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo 'Deployment successful!'
         }
         failure {
-            echo '❌ Pipeline failed. Check logs.'
+            echo 'Pipeline failed. Check logs.'
         }
     }
 }
