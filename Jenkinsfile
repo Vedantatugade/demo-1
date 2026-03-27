@@ -1,29 +1,35 @@
 pipeline {
     agent any
 
+    environment {
+        AWS_DEFAULT_REGION = 'ap-south-1'
+    }
+
     stages {
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
 
         stage('Terraform Init') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    dir('terraform') {
-                        sh 'terraform init'
-                    }
+                dir('terraform') {
+                    bat 'terraform init'
                 }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     dir('terraform') {
-                        sh 'terraform plan'
+                        bat 'terraform plan'
                     }
                 }
             }
@@ -31,35 +37,45 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     dir('terraform') {
-                        sh 'terraform apply -auto-approve'
+                        bat 'terraform apply -auto-approve'
                     }
+                }
+            }
+        }
+
+        stage('Terraform Output') {
+            steps {
+                dir('terraform') {
+                    bat 'terraform output -raw ec2_ip > ip.txt'
                 }
             }
         }
 
         stage('Run Ansible') {
             steps {
-                script {
-                    def EC2_IP = sh(
-                        script: "cd terraform && terraform output -raw web_public_ip",
-                        returnStdout: true
-                    ).trim()
-
-                    sh """
-                    cd 3tier
-                    chmod 400 ../my-tf-key.pem
-                    echo "[web]" > inventory
-                    echo "$EC2_IP ansible_user=ec2-user ansible_ssh_private_key_file=../my-tf-key.pem" >> inventory
-                    ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory playbook.yml
-                    """
-                }
+                bat '''
+                cd ansible
+                echo [web] > inventory
+                type ..\\terraform\\ip.txt >> inventory
+                ansible-playbook -i inventory playbook.yml
+                '''
             }
         }
 
+    }
+
+    post {
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs.'
+        }
     }
 }
