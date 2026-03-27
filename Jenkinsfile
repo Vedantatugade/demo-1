@@ -70,14 +70,20 @@ pipeline {
         }
 
         stage('Terraform Output') {
-            steps {
-                dir('terraform') {
-                    bat '''
-                    terraform output -raw web_public_ip > ip.txt
-                    '''
-                }
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'aws-credentials-1',
+            usernameVariable: 'AWS_ACCESS_KEY_ID',
+            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+        )]) {
+            dir('terraform') {
+                bat '''
+                terraform output -raw web_public_ip > ip.txt
+                '''
             }
         }
+    }
+}
 
         stage('Create Ansible Inventory') {
             steps {
