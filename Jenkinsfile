@@ -109,8 +109,7 @@ stages {
     stage('Run Ansible Playbook') {
         steps {
             bat '''
-            cd ansible
-            ansible-playbook -i inventory playbook.yml
+            wsl ansible-playbook -i ansible/inventory ansible/playbook.yml
             '''
         }
     }
@@ -119,10 +118,10 @@ stages {
 
 post {
     success {
-        echo '✅ Deployment successful!'
+        echo 'Deployment successful!'
     }
     failure {
-        echo '❌ Pipeline failed. Check logs.'
+        echo 'Pipeline failed. Check logs.'
     }
 }
 
