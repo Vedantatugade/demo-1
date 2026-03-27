@@ -3,7 +3,7 @@ agent any
 
 ```
 environment {
-    AWS_DEFAULT_REGION = 'ap-east-1'
+    AWS_DEFAULT_REGION = 'us-east-1'
 }
 
 stages {
