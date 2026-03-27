@@ -20,6 +20,18 @@ stages {
         }
     }
 
+    stage('Debug Tools') {
+        steps {
+            bat '''
+            echo ===== DEBUG START =====
+            terraform --version
+            echo AWS KEY: %AWS_ACCESS_KEY_ID%
+            dir
+            echo ===== DEBUG END =====
+            '''
+        }
+    }
+
     stage('Terraform Init') {
         steps {
             dir('terraform') {
