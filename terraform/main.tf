@@ -17,7 +17,7 @@ data "aws_subnet" "private_subnet" {
 # SECURITY GROUP - WEB
 #################################
 resource "aws_security_group" "web_sg" {
-  name   = "web-tier-sg"
+  name   = "web-tier-sg-1"
   vpc_id = data.aws_vpc.existing_vpc.id
 
   # HTTP ONLY from ALB SG
@@ -44,7 +44,7 @@ resource "aws_security_group" "web_sg" {
   }
 
   tags = {
-    Name = "web-tier-sg"
+    Name = "web-tier-sg-1"
   }
 }
 
@@ -52,7 +52,7 @@ resource "aws_security_group" "web_sg" {
 # SECURITY GROUP - APP
 #################################
 resource "aws_security_group" "app_sg" {
-  name   = "app-tier-sg"
+  name   = "app-tier-sg-1"
   vpc_id = data.aws_vpc.existing_vpc.id
 
   # Allow app traffic ONLY from web tier
@@ -79,7 +79,7 @@ resource "aws_security_group" "app_sg" {
   }
 
   tags = {
-    Name = "app-tier-sg"
+    Name = "app-tier-sg-1"
   }
 }
 
