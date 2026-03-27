@@ -100,7 +100,7 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                bat 'wsl ansible-playbook -i ansible/inventory ansible/playbook.yml'
+                bat 'ansible-playbook -i ansible/inventory ansible/playbook.yml'
             }
         }
     }
