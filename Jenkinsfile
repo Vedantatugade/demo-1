@@ -62,8 +62,7 @@ pipeline {
                 bat '''
                 cd ansible
                 echo [web] > inventory
-                type ..\\terraform\\ip.txt >> inventory
-                ansible-playbook -i inventory playbook.yml
+                for /f %%i in (..\\terraform\\ip.txt) do echo %%i ansible_user=ec2-user ansible_ssh_private_key_file=../my-tf-key.pem >> inventory
                 '''
             }
         }
