@@ -1,0 +1,2 @@
+[web]
+13.201.135.24 ansible_connection=aws_ssm
