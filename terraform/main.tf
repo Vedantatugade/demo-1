@@ -1,25 +1,19 @@
-#################################
-# TERRAFORM BACKEND (STATE FIX)
-#################################
 terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
   }
 
   backend "s3" {
-  bucket         = "demo-capstone-project"
-  key            = "demo-1/terraform.tfstate"
-  region         = "us-east-1"
-  dynamodb_table = "terraform-lock"
-}
+    bucket         = "demo-capstone-project"
+    key            = "demo-1/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-lock"
+  }
 }
 
-#################################
-# PROVIDER
-#################################
 provider "aws" {
   region = "us-east-1"
 }
@@ -43,10 +37,9 @@ data "aws_subnet" "private_subnet" {
 # SECURITY GROUP - WEB
 #################################
 resource "aws_security_group" "web_sg" {
-  name_prefix = "web-tier-sg-"   # avoids duplicate issue
+  name_prefix = "web-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
-  # HTTP from ALB
   ingress {
     from_port       = 80
     to_port         = 80
@@ -54,7 +47,6 @@ resource "aws_security_group" "web_sg" {
     security_groups = [var.alb_sg_id]
   }
 
-  # SSH from your IP
   ingress {
     from_port   = 22
     to_port     = 22
@@ -81,7 +73,6 @@ resource "aws_security_group" "app_sg" {
   name_prefix = "app-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
-  # App traffic only from Web SG
   ingress {
     from_port       = 4000
     to_port         = 4000
@@ -89,7 +80,6 @@ resource "aws_security_group" "app_sg" {
     security_groups = [aws_security_group.web_sg.id]
   }
 
-  # SSH only from Web SG
   ingress {
     from_port       = 22
     to_port         = 22
@@ -110,7 +100,7 @@ resource "aws_security_group" "app_sg" {
 }
 
 #################################
-# EC2 - WEB (PUBLIC)
+# EC2 - WEB
 #################################
 resource "aws_instance" "web" {
   ami           = var.ami_id
@@ -128,7 +118,7 @@ resource "aws_instance" "web" {
 }
 
 #################################
-# EC2 - APP (PRIVATE)
+# EC2 - APP
 #################################
 resource "aws_instance" "app" {
   ami           = var.ami_id
