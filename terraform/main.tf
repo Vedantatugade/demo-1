@@ -1,28 +1,16 @@
-provider "aws" {
-  region = "ap-south-1"
-}
-
-#################################
-# VARIABLES
-#################################
-variable "my_ip" {
-  description = "Your public IP for SSH"
-  default     = "YOUR_IP/32"
-}
-
 #################################
 # EXISTING VPC & SUBNETS
 #################################
 data "aws_vpc" "existing_vpc" {
-  id = "vpc-0133db51cca7dc45f"
+  id = var.vpc_id
 }
 
 data "aws_subnet" "public_subnet" {
-  id = "subnet-0a6da8a03ca606e04"
+  id = var.public_subnet_id
 }
 
 data "aws_subnet" "private_subnet" {
-  id = "subnet-04c24f8796b39cd42"
+  id = var.private_subnet_id
 }
 
 #################################
@@ -32,15 +20,15 @@ resource "aws_security_group" "web_sg" {
   name   = "web-tier-sg"
   vpc_id = data.aws_vpc.existing_vpc.id
 
-  # HTTP from internet
+  # HTTP ONLY from ALB SG
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [var.alb_sg_id]
   }
 
-  # SSH from your IP only
+  # SSH from your IP
   ingress {
     from_port   = 22
     to_port     = 22
@@ -75,7 +63,7 @@ resource "aws_security_group" "app_sg" {
     security_groups = [aws_security_group.web_sg.id]
   }
 
-  # SSH ONLY from web tier (secure)
+  # SSH ONLY from web tier
   ingress {
     from_port       = 22
     to_port         = 22
@@ -99,9 +87,9 @@ resource "aws_security_group" "app_sg" {
 # EC2 - WEB (PUBLIC)
 #################################
 resource "aws_instance" "web" {
-  ami           = "ami-0f3caa1cf4417e51b"
-  instance_type = "t3.micro"
-  key_name      = "my-tf-key"
+  ami           = var.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
   subnet_id              = data.aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
@@ -117,9 +105,9 @@ resource "aws_instance" "web" {
 # EC2 - APP (PRIVATE)
 #################################
 resource "aws_instance" "app" {
-  ami           = "ami-0f3caa1cf4417e51b"
-  instance_type = "t3.micro"
-  key_name      = "my-tf-key"
+  ami           = var.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
   subnet_id              = data.aws_subnet.private_subnet.id
   vpc_security_group_ids = [aws_security_group.app_sg.id]
