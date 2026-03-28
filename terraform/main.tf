@@ -17,9 +17,8 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# -------------------------------
-# EXISTING VPC & SUBNETS
-# -------------------------------
+#vpc and subnet
+
 data "aws_vpc" "existing_vpc" {
   id = var.vpc_id
 }
@@ -32,9 +31,14 @@ data "aws_subnet" "private_subnet" {
   id = var.private_subnet_id
 }
 
-# -------------------------------
-# IAM ROLE (EXISTING)
-# -------------------------------
+#internal load balncer sg
+
+data "aws_security_group" "internal_alb_sg" {
+  id = "sg-00dafe10f5caff6e6"
+}
+
+# iam role
+
 data "aws_iam_role" "ec2_role" {
   name = "capstone-role"
 }
@@ -44,14 +48,14 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = data.aws_iam_role.ec2_role.name
 }
 
-# -------------------------------
-# SECURITY GROUP - WEB
-# -------------------------------
+#web-tier sg
+
 resource "aws_security_group" "web_sg" {
   name_prefix = "web-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
-  # ✅ SSH only from your IP (SECURE)
+# SSH from IP
+
   ingress {
     from_port   = 22
     to_port     = 22
@@ -59,15 +63,16 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = [var.my_ip]
   }
 
-  # ✅ HTTP access (for testing)
+# HTTP public access
+
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]   # use 0.0.0.0/0 only if needed
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # ✅ Optional (future ALB support)
+# external load balncer access
   ingress {
     from_port       = 80
     to_port         = 80
@@ -87,19 +92,19 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# -------------------------------
-# SECURITY GROUP - APP
-# -------------------------------
+# app-tier sg
+
 resource "aws_security_group" "app_sg" {
   name_prefix = "app-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
-  # Only web tier can access app tier
+# internal loadbalncer access
+
   ingress {
     from_port       = 4000
     to_port         = 4000
     protocol        = "tcp"
-    security_groups = [aws_security_group.web_sg.id]
+    security_groups = [data.aws_security_group.internal_alb_sg.id]
   }
 
   egress {
@@ -114,9 +119,8 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
-# -------------------------------
-# EC2 - WEB TIER
-# -------------------------------
+#web-ter instance
+
 resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -134,9 +138,8 @@ resource "aws_instance" "web" {
   }
 }
 
-# -------------------------------
-# EC2 - APP TIER
-# -------------------------------
+# app-tier instance
+
 resource "aws_instance" "app" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -154,9 +157,8 @@ resource "aws_instance" "app" {
   }
 }
 
-# -------------------------------
-# OUTPUTS
-# -------------------------------
+# outputs ip adddress
+
 output "web_public_ip" {
   value = aws_instance.web.public_ip
 }

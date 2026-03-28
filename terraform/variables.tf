@@ -1,5 +1,5 @@
 variable "my_ip" {
-  description = "Your public IP for SSH"
+  description = "public IP for SSH"
   type        = string
 }
 

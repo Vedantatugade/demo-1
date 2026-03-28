@@ -75,14 +75,14 @@ pipeline {
             }
         }
 
-    }  // ✅ THIS WAS MISSING
+    }  
 
     post {
         success {
-            echo '✅ Full Deployment Successful! (Terraform + Ansible)'
+            echo 'Full Deployment Successful! (Terraform + Ansible)'
         }
         failure {
-            echo '❌ Deployment Failed!'
+            echo 'Deployment Failed!'
         }
         always {
             echo 'Pipeline execution completed.'
