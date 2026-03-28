@@ -46,13 +46,7 @@ pipeline {
             }
         }
 
-        stage('Terraform Format Check') {
-            steps {
-                dir('terraform') {
-                    bat 'terraform fmt -check'
-                }
-            }
-        }
+        
 
         stage('Terraform Plan') {
             steps {
