@@ -22,5 +22,5 @@
 
     - name: Copy website
       copy:
-        src: app/index.html
+        src: ../app/index.html   # OR app/index.html if moved
         dest: /usr/share/nginx/html/index.html

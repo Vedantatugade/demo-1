@@ -10,8 +10,6 @@ terraform {
     bucket  = "demo-capstone-project"
     key     = "demo-1/terraform.tfstate"
     region  = "us-east-1"
-    # optional (new recommended)
-    # use_lockfile = true
   }
 }
 
@@ -53,18 +51,22 @@ resource "aws_security_group" "web_sg" {
   name_prefix = "web-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [var.alb_sg_id]
-  }
+  
 
+  # ✅ Allow SSH only from your IP
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = [var.my_ip]
+  }
+
+  # (Optional future ALB support)
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [var.alb_sg_id]
   }
 
   egress {
@@ -86,6 +88,7 @@ resource "aws_security_group" "app_sg" {
   name_prefix = "app-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
+  # Only web tier can access app tier
   ingress {
     from_port       = 4000
     to_port         = 4000
@@ -93,7 +96,6 @@ resource "aws_security_group" "app_sg" {
     security_groups = [aws_security_group.web_sg.id]
   }
 
-  
   egress {
     from_port   = 0
     to_port     = 0
