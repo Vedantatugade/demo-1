@@ -32,7 +32,7 @@ pipeline {
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     dir('terraform') {
-                        sh 'terraform init -upgrade'
+                        bat 'terraform init -upgrade'
                     }
                 }
             }
@@ -41,7 +41,7 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 dir('terraform') {
-                    sh 'terraform validate'
+                    bat 'terraform validate'
                 }
             }
         }
@@ -49,7 +49,7 @@ pipeline {
         stage('Terraform Format Check') {
             steps {
                 dir('terraform') {
-                    sh 'terraform fmt -check'
+                    bat 'terraform fmt -check'
                 }
             }
         }
@@ -62,7 +62,7 @@ pipeline {
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     dir('terraform') {
-                        sh 'terraform plan -out=tfplan'
+                        bat 'terraform plan -out=tfplan'
                     }
                 }
             }
@@ -78,7 +78,7 @@ pipeline {
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     dir('terraform') {
-                        sh 'terraform apply -auto-approve tfplan'
+                        bat 'terraform apply -auto-approve tfplan'
                     }
                 }
             }
@@ -87,10 +87,10 @@ pipeline {
 
     post {
         success {
-            echo 'Terraform deployment successful!'
+            echo '✅ Terraform deployment successful!'
         }
         failure {
-            echo 'Terraform deployment failed!'
+            echo '❌ Terraform deployment failed!'
         }
         always {
             echo 'Pipeline execution completed.'
