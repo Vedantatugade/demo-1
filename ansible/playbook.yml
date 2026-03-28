@@ -1,26 +1,17 @@
----
-- hosts: web
+
+- name: Install Nginx on Web Tier
+  hosts: web
   become: yes
 
   tasks:
 
-    - name: Install nginx
-      yum:
+    - name: Install Nginx
+      dnf:
         name: nginx
         state: present
 
-    - name: Start nginx
+    - name: Start Nginx
       service:
         name: nginx
         state: started
         enabled: yes
-
-    - name: Remove default nginx page
-      file:
-        path: /usr/share/nginx/html/index.html
-        state: absent
-
-    - name: Copy website
-      copy:
-        src: ../app/index.html   # OR app/index.html if moved
-        dest: /usr/share/nginx/html/index.html
