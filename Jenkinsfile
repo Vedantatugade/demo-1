@@ -75,18 +75,7 @@ pipeline {
             }
         }
 
-        stage('Run Ansible (Configure EC2)') {
-            steps {
-                bat """
-                wsl bash -c "
-                cd ${PROJECT_PATH}/ansible && \
-                chmod 400 ${PROJECT_PATH}/my-tf-key.pem && \
-                ansible-playbook -i inventory.ini playbook.yml
-                "
-                """
-            }
-        }
-    }
+        
 
     post {
         success {
