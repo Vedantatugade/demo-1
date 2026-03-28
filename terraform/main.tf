@@ -7,10 +7,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "demo-capstone-project"
-    key            = "demo-1/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-lock"
+    bucket  = "demo-capstone-project"
+    key     = "demo-1/terraform.tfstate"
+    region  = "us-east-1"
+    # optional (new recommended)
+    # use_lockfile = true
   }
 }
 
@@ -18,7 +19,9 @@ provider "aws" {
   region = "us-east-1"
 }
 
-#vpc and subnet
+# -------------------------------
+# EXISTING VPC & SUBNETS
+# -------------------------------
 data "aws_vpc" "existing_vpc" {
   id = var.vpc_id
 }
@@ -31,7 +34,21 @@ data "aws_subnet" "private_subnet" {
   id = var.private_subnet_id
 }
 
-#security grp web-tier
+# -------------------------------
+# IAM ROLE (EXISTING)
+# -------------------------------
+data "aws_iam_role" "ec2_role" {
+  name = "capstone-role"
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "capstone-instance-profile"
+  role = data.aws_iam_role.ec2_role.name
+}
+
+# -------------------------------
+# SECURITY GROUP - WEB
+# -------------------------------
 resource "aws_security_group" "web_sg" {
   name_prefix = "web-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -62,8 +79,9 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-#security app-tier
-
+# -------------------------------
+# SECURITY GROUP - APP
+# -------------------------------
 resource "aws_security_group" "app_sg" {
   name_prefix = "app-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -94,8 +112,9 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
-# creating web-tier ec2 instance
-
+# -------------------------------
+# EC2 - WEB TIER
+# -------------------------------
 resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -106,13 +125,16 @@ resource "aws_instance" "web" {
 
   associate_public_ip_address = true
 
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+
   tags = {
     Name = "web-tier"
   }
 }
 
-#creating app-tier ec2 instance
-
+# -------------------------------
+# EC2 - APP TIER
+# -------------------------------
 resource "aws_instance" "app" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -123,13 +145,16 @@ resource "aws_instance" "app" {
 
   associate_public_ip_address = false
 
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+
   tags = {
     Name = "app-tier"
   }
 }
 
-#output of ip
-
+# -------------------------------
+# OUTPUTS
+# -------------------------------
 output "web_public_ip" {
   value = aws_instance.web.public_ip
 }
