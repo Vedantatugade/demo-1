@@ -63,21 +63,18 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-            steps {
-                input message: 'Do you want to apply Terraform changes?', ok: 'Apply'
-
-                withCredentials([usernamePassword(
-                    credentialsId: 'aws-credentials-1',
-                    usernameVariable: 'AWS_ACCESS_KEY_ID',
-                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                )]) {
-                    dir('terraform') {
-                        bat 'terraform apply -auto-approve tfplan'
-                    }
-                }
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'aws-credentials-1',
+            usernameVariable: 'AWS_ACCESS_KEY_ID',
+            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+        )]) {
+            dir('terraform') {
+                bat 'terraform apply -auto-approve tfplan'
             }
         }
     }
+}
 
     post {
         success {
