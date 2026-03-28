@@ -1,26 +1,26 @@
+---
 - hosts: web
   become: yes
 
   tasks:
 
-  - name: Install nginx
-    dnf:
-      name: nginx
-      state: present
+    - name: Install nginx
+      yum:
+        name: nginx
+        state: present
 
-  - name: Start nginx
-    service:
-      name: nginx
-      state: started
-      enabled: yes
+    - name: Start nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
 
-  - name: Remove default nginx page
-    file:
-      path: /usr/share/nginx/html/index.html
-      state: absent
+    - name: Remove default nginx page
+      file:
+        path: /usr/share/nginx/html/index.html
+        state: absent
 
-  - name: Copy website
-    copy:
-      src: ../app/index.html
-      dest: /usr/share/nginx/html/index.html
-      
+    - name: Copy website
+      copy:
+        src: app/index.html
+        dest: /usr/share/nginx/html/index.html

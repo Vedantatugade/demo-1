@@ -1,4 +1,4 @@
-my_ip            = "106.192.50.46/32"
+my_ip            = "106.192.58.143/32"
 ami_id           = "ami-0f3caa1cf4417e51b"
 key_name         = "my-tf-key"
 
