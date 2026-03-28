@@ -51,9 +51,7 @@ resource "aws_security_group" "web_sg" {
   name_prefix = "web-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
-  
-
-  # ✅ Allow SSH only from your IP
+  # ✅ SSH only from your IP (SECURE)
   ingress {
     from_port   = 22
     to_port     = 22
@@ -61,7 +59,15 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = [var.my_ip]
   }
 
-  # (Optional future ALB support)
+  # ✅ HTTP access (for testing)
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip]   # use 0.0.0.0/0 only if needed
+  }
+
+  # ✅ Optional (future ALB support)
   ingress {
     from_port       = 80
     to_port         = 80
