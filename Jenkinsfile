@@ -75,7 +75,7 @@ pipeline {
             }
         }
 
-        
+    }  // ✅ THIS WAS MISSING
 
     post {
         success {
