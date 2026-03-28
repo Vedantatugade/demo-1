@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
+        PROJECT_PATH = '/mnt/c/Users/Shubham/OneDrive/Desktop/demo-1'
     }
 
     options {
@@ -73,14 +74,26 @@ pipeline {
                 }
             }
         }
+
+        stage('Run Ansible (Configure EC2)') {
+            steps {
+                bat """
+                wsl bash -c "
+                cd ${PROJECT_PATH}/ansible && \
+                chmod 400 ${PROJECT_PATH}/my-tf-key.pem && \
+                ansible-playbook -i inventory.ini playbook.yml
+                "
+                """
+            }
+        }
     }
 
     post {
         success {
-            echo '✅ Terraform deployment successful!'
+            echo '✅ Full Deployment Successful! (Terraform + Ansible)'
         }
         failure {
-            echo '❌ Terraform deployment failed!'
+            echo '❌ Deployment Failed!'
         }
         always {
             echo 'Pipeline execution completed.'
