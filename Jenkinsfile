@@ -5,6 +5,11 @@ pipeline {
         AWS_DEFAULT_REGION = 'us-east-1'
     }
 
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+    }
+
     stages {
 
         stage('Clean Workspace') {
@@ -27,7 +32,7 @@ pipeline {
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     dir('terraform') {
-                        bat 'terraform init -upgrade'
+                        sh 'terraform init -upgrade'
                     }
                 }
             }
@@ -36,7 +41,15 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 dir('terraform') {
-                    bat 'terraform validate'
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        stage('Terraform Format Check') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform fmt -check'
                 }
             }
         }
@@ -49,7 +62,7 @@ pipeline {
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     dir('terraform') {
-                        bat 'terraform plan'
+                        sh 'terraform plan -out=tfplan'
                     }
                 }
             }
@@ -57,68 +70,30 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
+                input message: 'Do you want to apply Terraform changes?', ok: 'Apply'
+
                 withCredentials([usernamePassword(
                     credentialsId: 'aws-credentials-1',
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
                     dir('terraform') {
-                        bat 'terraform apply -auto-approve'
+                        sh 'terraform apply -auto-approve tfplan'
                     }
                 }
-            }
-        }
-
-        stage('Terraform Output') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'aws-credentials-1',
-                    usernameVariable: 'AWS_ACCESS_KEY_ID',
-                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                )]) {
-                    dir('terraform') {
-                        bat 'terraform output -raw web_public_ip > ip.txt'
-                    }
-                }
-            }
-        }
-
-        stage('Create Ansible Inventory') {
-            steps {
-                bat '''
-                cd ansible
-
-                if not exist ..\\terraform\\ip.txt (
-                    echo ERROR: ip.txt not found
-                    exit 1
-                )
-
-                echo [web] > inventory
-                for /f %%i in (..\\terraform\\ip.txt) do (
-                    echo %%i ansible_user=ec2-user ansible_ssh_private_key_file=../my-tf-key.pem >> inventory
-                )
-                '''
-            }
-        }
-
-        stage('Run Ansible Playbook') {
-            steps {
-                bat '''
-                cd ansible
-
-                wsl chmod 400 ../my-tf-key.pem
-                wsl ansible-playbook -i inventory playbook.yml
-                '''
             }
         }
     }
 
     post {
         success {
-            echo 'SUCCESS'
+            echo 'Terraform deployment successful!'
         }
         failure {
-            echo 'FAILED'
+            echo 'Terraform deployment failed!'
+        }
+        always {
+            echo 'Pipeline execution completed.'
         }
     }
 }

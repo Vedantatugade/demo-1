@@ -18,9 +18,7 @@ provider "aws" {
   region = "us-east-1"
 }
 
-#################################
-# EXISTING VPC & SUBNETS
-#################################
+#vpc and subnet
 data "aws_vpc" "existing_vpc" {
   id = var.vpc_id
 }
@@ -33,9 +31,7 @@ data "aws_subnet" "private_subnet" {
   id = var.private_subnet_id
 }
 
-#################################
-# SECURITY GROUP - WEB
-#################################
+#security grp web-tier
 resource "aws_security_group" "web_sg" {
   name_prefix = "web-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -66,9 +62,8 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-#################################
-# SECURITY GROUP - APP
-#################################
+#security app-tier
+
 resource "aws_security_group" "app_sg" {
   name_prefix = "app-tier-sg-"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -99,9 +94,8 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
-#################################
-# EC2 - WEB
-#################################
+# creating web-tier ec2 instance
+
 resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -117,9 +111,8 @@ resource "aws_instance" "web" {
   }
 }
 
-#################################
-# EC2 - APP
-#################################
+#creating app-tier ec2 instance
+
 resource "aws_instance" "app" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -135,9 +128,8 @@ resource "aws_instance" "app" {
   }
 }
 
-#################################
-# OUTPUTS
-#################################
+#output of ip
+
 output "web_public_ip" {
   value = aws_instance.web.public_ip
 }
