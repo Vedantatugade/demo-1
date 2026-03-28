@@ -1,22 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-
-  backend "s3" {
-    bucket  = "demo-capstone-project"
-    key     = "demo-1/terraform.tfstate"
-    region  = "us-east-1"
-  }
-}
-
-provider "aws" {
-  region = "us-east-1"
-}
-
 #vpc and subnet
 
 data "aws_vpc" "existing_vpc" {
@@ -157,12 +138,3 @@ resource "aws_instance" "app" {
   }
 }
 
-# outputs ip adddress
-
-output "web_public_ip" {
-  value = aws_instance.web.public_ip
-}
-
-output "app_private_ip" {
-  value = aws_instance.app.private_ip
-}
