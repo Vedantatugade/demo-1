@@ -64,7 +64,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = [var.my_ip]   # use 0.0.0.0/0 only if needed
+    cidr_blocks = ["0.0.0.0/0"]   # use 0.0.0.0/0 only if needed
   }
 
   # ✅ Optional (future ALB support)
