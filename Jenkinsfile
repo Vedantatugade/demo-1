@@ -46,8 +46,6 @@ pipeline {
             }
         }
 
-        
-
         stage('Terraform Plan') {
             steps {
                 withCredentials([usernamePassword(
@@ -63,18 +61,19 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'aws-credentials-1',
-            usernameVariable: 'AWS_ACCESS_KEY_ID',
-            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-        )]) {
-            dir('terraform') {
-                bat 'terraform apply -auto-approve tfplan'
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    dir('terraform') {
+                        bat 'terraform apply -auto-approve tfplan'
+                    }
+                }
             }
         }
     }
-}
 
     post {
         success {
