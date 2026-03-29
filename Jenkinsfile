@@ -4,6 +4,7 @@ pipeline {
     environment {
         TF_DIR = 'terraform'
         ANSIBLE_DIR = 'ansible'
+        AWS_DEFAULT_REGION = 'us-east-1'
     }
 
     options {
@@ -27,12 +28,13 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     dir("${TF_DIR}") {
-                        sh 'terraform init'
+                        bat 'terraform init'
                     }
                 }
             }
@@ -41,19 +43,20 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform validate'
+                    bat 'terraform validate'
                 }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     dir("${TF_DIR}") {
-                        sh 'terraform plan -out=tfplan'
+                        bat 'terraform plan -out=tfplan'
                     }
                 }
             }
@@ -61,12 +64,13 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-credentials-1',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     dir("${TF_DIR}") {
-                        sh 'terraform apply -auto-approve tfplan'
+                        bat 'terraform apply -auto-approve tfplan'
                     }
                 }
             }
@@ -75,12 +79,12 @@ pipeline {
         stage('Fetch IPs') {
             steps {
                 script {
-                    env.WEB_IP = sh(
+                    env.WEB_IP = bat(
                         script: "cd ${TF_DIR} && terraform output -raw web_public_ip",
                         returnStdout: true
                     ).trim()
 
-                    env.APP_IP = sh(
+                    env.APP_IP = bat(
                         script: "cd ${TF_DIR} && terraform output -raw app_private_ip",
                         returnStdout: true
                     ).trim()
@@ -91,7 +95,7 @@ pipeline {
             }
         }
 
-        stage('Create Ansible Inventory') {
+        stage('Create Inventory') {
             steps {
                 script {
                     writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
@@ -107,8 +111,8 @@ ${env.APP_IP} ansible_user=ec2-user
 
         stage('Wait for EC2') {
             steps {
-                echo "Waiting for EC2 instances..."
-                sh 'sleep 60'
+                echo "Waiting for EC2..."
+                bat 'timeout /t 60'
             }
         }
 
@@ -117,15 +121,13 @@ ${env.APP_IP} ansible_user=ec2-user
                 withCredentials([
                     sshUserPrivateKey(credentialsId: 'ec2-key', keyFileVariable: 'KEY_FILE')
                 ]) {
-                    sh """
+                    bat """
                     cd ${ANSIBLE_DIR}
 
-                    chmod 400 \$KEY_FILE
+                    set ANSIBLE_HOST_KEY_CHECKING=False
 
-                    export ANSIBLE_HOST_KEY_CHECKING=False
-
-                    ansible-playbook -i inventory.ini web.yml --private-key \$KEY_FILE
-                    ansible-playbook -i inventory.ini app.yml --private-key \$KEY_FILE
+                    ansible-playbook -i inventory.ini web.yml --private-key %KEY_FILE%
+                    ansible-playbook -i inventory.ini app.yml --private-key %KEY_FILE%
                     """
                 }
             }
@@ -134,10 +136,10 @@ ${env.APP_IP} ansible_user=ec2-user
 
     post {
         success {
-            echo 'Deployment Successful (Terraform + Ansible)'
+            echo '✅ Deployment Successful (Terraform + Ansible)'
         }
         failure {
-            echo 'Deployment Failed'
+            echo '❌ Deployment Failed'
         }
         always {
             echo 'Pipeline execution completed.'
