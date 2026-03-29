@@ -1,156 +1,146 @@
-# ---------------- VPC & SUBNETS ----------------
+pipeline {
+    agent any
 
-data "aws_vpc" "existing_vpc" {
-  id = var.vpc_id
-}
+    environment {
+        TF_DIR = 'terraform'
+        ANSIBLE_DIR = 'ansible'
+    }
 
-data "aws_subnet" "public_subnet" {
-  id = var.public_subnet_id
-}
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+    }
 
-data "aws_subnet" "private_subnet" {
-  id = var.private_subnet_id
-}
+    stages {
 
-# ---------------- IAM ----------------
+        stage('Clean Workspace') {
+            steps {
+                deleteDir()
+            }
+        }
 
-data "aws_iam_role" "ec2_role" {
-  name = "capstone-role"
-}
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
 
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "capstone-instance-profile"
-  role = data.aws_iam_role.ec2_role.name
-}
+        stage('Terraform Init') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    dir("${TF_DIR}") {
+                        sh 'terraform init'
+                    }
+                }
+            }
+        }
 
-# ---------------- SECURITY GROUPS (NO RULES INSIDE) ----------------
+        stage('Terraform Validate') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh 'terraform validate'
+                }
+            }
+        }
 
-resource "aws_security_group" "external_alb_sg" {
-  name_prefix = "external-alb-sg-"
-  vpc_id      = data.aws_vpc.existing_vpc.id
-}
+        stage('Terraform Plan') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    dir("${TF_DIR}") {
+                        sh 'terraform plan -out=tfplan'
+                    }
+                }
+            }
+        }
 
-resource "aws_security_group" "web_sg" {
-  name_prefix = "web-tier-sg-"
-  vpc_id      = data.aws_vpc.existing_vpc.id
-}
+        stage('Terraform Apply') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    dir("${TF_DIR}") {
+                        sh 'terraform apply -auto-approve tfplan'
+                    }
+                }
+            }
+        }
 
-resource "aws_security_group" "internal_alb_sg" {
-  name_prefix = "internal-alb-sg-"
-  vpc_id      = data.aws_vpc.existing_vpc.id
-}
+        stage('Fetch IPs') {
+            steps {
+                script {
+                    env.WEB_IP = sh(
+                        script: "cd ${TF_DIR} && terraform output -raw web_public_ip",
+                        returnStdout: true
+                    ).trim()
 
-resource "aws_security_group" "app_sg" {
-  name_prefix = "app-tier-sg-"
-  vpc_id      = data.aws_vpc.existing_vpc.id
-}
+                    env.APP_IP = sh(
+                        script: "cd ${TF_DIR} && terraform output -raw app_private_ip",
+                        returnStdout: true
+                    ).trim()
 
-resource "aws_security_group" "db_sg" {
-  name_prefix = "db-tier-sg-"
-  vpc_id      = data.aws_vpc.existing_vpc.id
-}
+                    echo "Web IP: ${env.WEB_IP}"
+                    echo "App IP: ${env.APP_IP}"
+                }
+            }
+        }
 
-# ---------------- SECURITY GROUP RULES ----------------
+        stage('Create Ansible Inventory') {
+            steps {
+                script {
+                    writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
+[web]
+${env.WEB_IP} ansible_user=ec2-user
 
-# External ALB → Internet
-resource "aws_security_group_rule" "alb_http" {
-  type              = "ingress"
-  security_group_id = aws_security_group.external_alb_sg.id
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
+[app]
+${env.APP_IP} ansible_user=ec2-user
+"""
+                }
+            }
+        }
 
-resource "aws_security_group_rule" "alb_https" {
-  type              = "ingress"
-  security_group_id = aws_security_group.external_alb_sg.id
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
+        stage('Wait for EC2') {
+            steps {
+                echo "Waiting for EC2 instances..."
+                sh 'sleep 60'
+            }
+        }
 
-# ALB → WEB
-resource "aws_security_group_rule" "alb_to_web" {
-  type                     = "ingress"
-  security_group_id        = aws_security_group.web_sg.id
-  from_port                = 80
-  to_port                  = 80
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.external_alb_sg.id
-}
+        stage('Run Ansible') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'ec2-key', keyFileVariable: 'KEY_FILE')
+                ]) {
+                    sh """
+                    cd ${ANSIBLE_DIR}
 
-# SSH to WEB
-resource "aws_security_group_rule" "ssh_web" {
-  type              = "ingress"
-  security_group_id = aws_security_group.web_sg.id
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = [var.my_ip]
-}
+                    chmod 400 \$KEY_FILE
 
-# WEB → INTERNAL ALB
-resource "aws_security_group_rule" "web_to_internal_alb" {
-  type                     = "ingress"
-  security_group_id        = aws_security_group.internal_alb_sg.id
-  from_port                = 4000
-  to_port                  = 4000
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.web_sg.id
-}
+                    export ANSIBLE_HOST_KEY_CHECKING=False
 
-# INTERNAL ALB → APP
-resource "aws_security_group_rule" "internal_alb_to_app" {
-  type                     = "ingress"
-  security_group_id        = aws_security_group.app_sg.id
-  from_port                = 4000
-  to_port                  = 4000
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.internal_alb_sg.id
-}
+                    ansible-playbook -i inventory.ini web.yml --private-key \$KEY_FILE
+                    ansible-playbook -i inventory.ini app.yml --private-key \$KEY_FILE
+                    """
+                }
+            }
+        }
+    }
 
-# APP → DB
-resource "aws_security_group_rule" "app_to_db" {
-  type                     = "ingress"
-  security_group_id        = aws_security_group.db_sg.id
-  from_port                = 3306
-  to_port                  = 3306
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.app_sg.id
-}
-
-# ---------------- INSTANCES ----------------
-
-resource "aws_instance" "web" {
-  ami           = var.ami_id
-  instance_type = var.instance_type
-  key_name      = var.key_name
-
-  subnet_id              = data.aws_subnet.public_subnet.id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-
-  associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-
-  tags = {
-    Name = "web-tier"
-  }
-}
-
-resource "aws_instance" "app" {
-  ami           = var.ami_id
-  instance_type = var.instance_type
-  key_name      = var.key_name
-
-  subnet_id              = data.aws_subnet.private_subnet.id
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
-
-  associate_public_ip_address = false
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-
-  tags = {
-    Name = "app-tier"
-  }
+    post {
+        success {
+            echo 'Deployment Successful (Terraform + Ansible)'
+        }
+        failure {
+            echo 'Deployment Failed'
+        }
+        always {
+            echo 'Pipeline execution completed.'
+        }
+    }
 }
