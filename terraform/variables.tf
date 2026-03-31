@@ -34,3 +34,22 @@ variable "private_subnet_id" {
   type        = string
 }
 
+variable "internal_alb_sg_id" {
+  description = "internal lb sg"
+  type = string
+}
+
+variable "external_alb_sg_id" {
+  description = "internal lb sg"
+  type = string
+}
+
+variable "rdb_sg_id" {
+  description = "Database Security Group ID (manually created)"
+  type        = string
+}
+
+
+
+
+
