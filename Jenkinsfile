@@ -1,11 +1,12 @@
 pipeline {
-    agent any
+agent any
 
-    environment {
-        TF_DIR      = 'terraform'
-        ANSIBLE_DIR = 'ansible'
-    }
-    
+
+environment {
+    TF_DIR      = 'terraform'
+    ANSIBLE_DIR = 'ansible'
+}
+
 options {
     disableConcurrentBuilds()
     timestamps()
@@ -77,7 +78,7 @@ stages {
         steps {
             script {
                 writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
-```
+
 
 [web]
 ${env.WEB_IP} ansible_user=ec2-user
@@ -86,13 +87,13 @@ ${env.WEB_IP} ansible_user=ec2-user
 ${env.APP_IP} ansible_user=ec2-user
 
 [app:vars]
-ansible_ssh_common_args='-o ProxyCommand="ssh -i $KEY_FILE -W %h:%p ec2-user@${env.WEB_IP}"'
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
 """
 }
 }
 }
 
-```
+
     stage('Wait for Instances') {
         steps {
             sh '''
@@ -138,6 +139,6 @@ post {
         echo '❌ Deployment Failed'
     }
 }
-```
+
 
 }
