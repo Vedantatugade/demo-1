@@ -47,34 +47,38 @@ pipeline {
             }
         }
 
-       stage('Fetch IPs') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'aws-creds',
-                usernameVariable: 'AWS_ACCESS_KEY_ID',
-                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-            )
-        ]) {
-            dir("${TF_DIR}") {
-                script {
-                    env.WEB_IP = bat(
-                        script: "terraform output -raw web_public_ip",
-                        returnStdout: true
-                    ).trim()
+        stage('Fetch IPs') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-creds',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    dir("${TF_DIR}") {
+                        script {
+                            def webOutput = bat(
+                                script: "terraform output -raw web_public_ip",
+                                returnStdout: true
+                            ).trim()
 
-                    env.APP_IP = bat(
-                        script: "terraform output -raw app_private_ip",
-                        returnStdout: true
-                    ).trim()
+                            def appOutput = bat(
+                                script: "terraform output -raw app_private_ip",
+                                returnStdout: true
+                            ).trim()
 
-                    echo "WEB_IP=${env.WEB_IP}"
-                    echo "APP_IP=${env.APP_IP}"
+                            // Fix extra text issue
+                            env.WEB_IP = webOutput.tokenize('\n')[-1].trim()
+                            env.APP_IP = appOutput.tokenize('\n')[-1].trim()
+
+                            echo "WEB_IP=${env.WEB_IP}"
+                            echo "APP_IP=${env.APP_IP}"
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         stage('Create Inventory') {
             steps {
@@ -82,13 +86,13 @@ pipeline {
                     writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
 
 [web]
-${env.WEB_IP} ansible_user=ec2-user
+${env.WEB_IP} ansible_user=ec2-user ansible_ssh_private_key_file=/home/vedant/my-tf-key.pem
 
 [app]
-${env.APP_IP} ansible_user=ec2-user
+${env.APP_IP} ansible_user=ec2-user ansible_ssh_private_key_file=/home/vedant/my-tf-key.pem
 
 [app:vars]
-ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i /home/vedant/my-tf-key.pem"'
 """
                 }
             }
@@ -100,9 +104,9 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
                 cd ${ANSIBLE_DIR}
                 set ANSIBLE_HOST_KEY_CHECKING=False
 
-                wsl ansible --version
+                wsl -u root ansible --version
 
-                wsl ansible -i inventory.ini web -m wait_for_connection --timeout=300
+                wsl -u root ansible -i inventory.ini web -m wait_for_connection --timeout=300
                 """
             }
         }
@@ -114,9 +118,9 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
 
                 echo Running Ansible...
 
-                wsl ansible --version
+                wsl -u root ansible --version
 
-                wsl ansible-playbook -i inventory.ini playbook.yml
+                wsl -u root ansible-playbook -i inventory.ini playbook.yml
                 """
             }
         }
