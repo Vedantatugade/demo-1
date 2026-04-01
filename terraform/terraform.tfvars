@@ -1,4 +1,4 @@
-my_ip            = "223.228.61.213/32"
+my_ip            = "110.224.122.152/32"
 ami_id           = "ami-0f3caa1cf4417e51b"
 key_name         = "my-tf-key.pem"
 
