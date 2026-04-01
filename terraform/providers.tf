@@ -7,8 +7,8 @@ terraform {
   }
 
   backend "s3" {
-    bucket  = "demo-capstone-project"
-    key     = "demo-1/terraform.tfstate"
+    bucket  = "test-final-project-1001"
+    key     = "test-final-project-1001/terraform.tfstate"
     region  = "us-east-1"
   }
 }
