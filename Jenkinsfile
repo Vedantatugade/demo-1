@@ -1,12 +1,11 @@
 pipeline {
-agent any
+    agent any
 
-```
-environment {
-    TF_DIR      = 'terraform'
-    ANSIBLE_DIR = 'ansible'
-}
-
+    environment {
+        TF_DIR      = 'terraform'
+        ANSIBLE_DIR = 'ansible'
+    }
+    
 options {
     disableConcurrentBuilds()
     timestamps()
