@@ -36,10 +36,12 @@ pipeline {
                     )
                 ]) {
                     dir("${TF_DIR}") {
-                        bat 'terraform init'
-                        bat 'terraform validate'
-                        bat 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
-                        bat 'terraform apply -auto-approve tfplan'
+                        sh '''
+                        terraform init
+                        terraform validate
+                        terraform plan -var-file="terraform.tfvars" -out=tfplan
+                        terraform apply -auto-approve tfplan
+                        '''
                     }
                 }
             }
@@ -47,28 +49,20 @@ pipeline {
 
         stage('Fetch IPs') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'aws-creds',
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )
-                ]) {
-                    dir("${TF_DIR}") {
-                        script {
-                            env.WEB_IP = bat(
-                                script: "terraform output -raw web_public_ip",
-                                returnStdout: true
-                            ).trim()
+                dir("${TF_DIR}") {
+                    script {
+                        env.WEB_IP = sh(
+                            script: "terraform output -raw web_public_ip",
+                            returnStdout: true
+                        ).trim()
 
-                            env.APP_IP = bat(
-                                script: "terraform output -raw app_private_ip",
-                                returnStdout: true
-                            ).trim()
+                        env.APP_IP = sh(
+                            script: "terraform output -raw app_private_ip",
+                            returnStdout: true
+                        ).trim()
 
-                            echo "WEB_IP=${env.WEB_IP}"
-                            echo "APP_IP=${env.APP_IP}"
-                        }
+                        echo "WEB_IP=${env.WEB_IP}"
+                        echo "APP_IP=${env.APP_IP}"
                     }
                 }
             }
@@ -94,34 +88,36 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
 
         stage('Wait for Instances') {
             steps {
-                bat """
+                sh """
                 cd ${ANSIBLE_DIR}
-                set ANSIBLE_HOST_KEY_CHECKING=False
+                export ANSIBLE_HOST_KEY_CHECKING=False
                 ansible -i inventory.ini web -m wait_for_connection --timeout=300
                 """
             }
         }
 
         stage('Run Ansible') {
-    steps {
-        sh '''
-        echo "Running as user:"
-        whoami
+            steps {
+                sh """
+                cd ${ANSIBLE_DIR}
 
-        echo "Checking Ansible:"
-        which ansible
-        ansible --version
+                echo "Running as:"
+                whoami
 
-        export ANSIBLE_HOST_KEY_CHECKING=False
+                echo "Checking Ansible:"
+                which ansible
+                ansible --version
 
-        ansible -i inventory.ini web -m wait_for_connection --timeout=300
-        '''
-    }
-}
+                export ANSIBLE_HOST_KEY_CHECKING=False
+
+                ansible -i inventory.ini web -m wait_for_connection --timeout=300
+                """
+            }
+        }
 
         stage('Health Check') {
             steps {
-                bat "curl -f http://${env.WEB_IP}"
+                sh "curl -f http://${env.WEB_IP}"
             }
         }
     }
