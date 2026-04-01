@@ -4,6 +4,7 @@ pipeline {
     environment {
         TF_DIR      = 'terraform'
         ANSIBLE_DIR = 'ansible'
+        AWS_DEFAULT_REGION = 'ap-south-1'
     }
 
     options {
@@ -25,34 +26,22 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Deploy') {
             steps {
-                dir("${TF_DIR}") {
-                    bat 'terraform init'
-                }
-            }
-        }
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-creds',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    dir("${TF_DIR}") {
 
-        stage('Terraform Validate') {
-            steps {
-                dir("${TF_DIR}") {
-                    bat 'terraform validate'
-                }
-            }
-        }
-
-        stage('Terraform Plan') {
-            steps {
-                dir("${TF_DIR}") {
-                    bat 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                dir("${TF_DIR}") {
-                    bat 'terraform apply -auto-approve tfplan'
+                        bat 'terraform init'
+                        bat 'terraform validate'
+                        bat 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
+                        bat 'terraform apply -auto-approve tfplan'
+                    }
                 }
             }
         }
@@ -69,6 +58,9 @@ pipeline {
                         script: "cd ${TF_DIR} && terraform output -raw app_private_ip",
                         returnStdout: true
                     ).trim()
+
+                    echo "WEB_IP=${env.WEB_IP}"
+                    echo "APP_IP=${env.APP_IP}"
                 }
             }
         }
@@ -111,7 +103,10 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
                 ]) {
                     bat """
                     cd ${ANSIBLE_DIR}
+
+                    REM Fix key permission for Windows
                     icacls %KEY_FILE% /inheritance:r
+
                     set ANSIBLE_HOST_KEY_CHECKING=False
 
                     ansible-playbook -i inventory.ini web.yml --private-key %KEY_FILE%
