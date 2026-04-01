@@ -103,24 +103,21 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
         }
 
         stage('Run Ansible') {
-            steps {
-                withCredentials([
-                    sshUserPrivateKey(
-                        credentialsId: 'ec2-key',
-                        keyFileVariable: 'KEY_FILE'
-                    )
-                ]) {
-                    bat """
-                    cd ${ANSIBLE_DIR}
-                    icacls %KEY_FILE% /inheritance:r
-                    set ANSIBLE_HOST_KEY_CHECKING=False
+    steps {
+        sh '''
+        echo "Running as user:"
+        whoami
 
-                    ansible-playbook -i inventory.ini web.yml --private-key %KEY_FILE%
-                    ansible-playbook -i inventory.ini app.yml --private-key %KEY_FILE%
-                    """
-                }
-            }
-        }
+        echo "Checking Ansible:"
+        which ansible
+        ansible --version
+
+        export ANSIBLE_HOST_KEY_CHECKING=False
+
+        ansible -i inventory.ini web -m wait_for_connection --timeout=300
+        '''
+    }
+}
 
         stage('Health Check') {
             steps {
