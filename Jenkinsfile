@@ -47,26 +47,34 @@ pipeline {
             }
         }
 
-        stage('Fetch IPs') {
-            steps {
-                dir("${TF_DIR}") {
-                    script {
-                        env.WEB_IP = bat(
-                            script: "terraform output -raw web_public_ip",
-                            returnStdout: true
-                        ).trim()
+       stage('Fetch IPs') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'aws-creds',
+                usernameVariable: 'AWS_ACCESS_KEY_ID',
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            )
+        ]) {
+            dir("${TF_DIR}") {
+                script {
+                    env.WEB_IP = bat(
+                        script: "terraform output -raw web_public_ip",
+                        returnStdout: true
+                    ).trim()
 
-                        env.APP_IP = bat(
-                            script: "terraform output -raw app_private_ip",
-                            returnStdout: true
-                        ).trim()
+                    env.APP_IP = bat(
+                        script: "terraform output -raw app_private_ip",
+                        returnStdout: true
+                    ).trim()
 
-                        echo "WEB_IP=${env.WEB_IP}"
-                        echo "APP_IP=${env.APP_IP}"
-                    }
+                    echo "WEB_IP=${env.WEB_IP}"
+                    echo "APP_IP=${env.APP_IP}"
                 }
             }
         }
+    }
+}
 
         stage('Create Inventory') {
             steps {
