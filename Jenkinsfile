@@ -28,17 +28,8 @@ stages {
 
     stage('Terraform Init') {
         steps {
-            withCredentials([
-                string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-            ]) {
-                dir("${TF_DIR}") {
-                    sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    terraform init
-                    '''
-                }
+            dir("${TF_DIR}") {
+                sh 'terraform init'
             }
         }
     }
@@ -53,34 +44,16 @@ stages {
 
     stage('Terraform Plan') {
         steps {
-            withCredentials([
-                string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-            ]) {
-                dir("${TF_DIR}") {
-                    sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    terraform plan -var-file="terraform.tfvars" -out=tfplan
-                    '''
-                }
+            dir("${TF_DIR}") {
+                sh 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
             }
         }
     }
 
     stage('Terraform Apply') {
         steps {
-            withCredentials([
-                string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-            ]) {
-                dir("${TF_DIR}") {
-                    sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    terraform apply -auto-approve tfplan
-                    '''
-                }
+            dir("${TF_DIR}") {
+                sh 'terraform apply -auto-approve tfplan'
             }
         }
     }
@@ -111,7 +84,10 @@ stages {
 ${env.WEB_IP} ansible_user=ec2-user
 
 [app]
-${env.APP_IP} ansible_user=ec2-user ansible_ssh_common_args='-o ProxyCommand="ssh -i $KEY_FILE -W %h:%p ec2-user@${env.WEB_IP}"'
+${env.APP_IP} ansible_user=ec2-user
+
+[app:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh -i $KEY_FILE -W %h:%p ec2-user@${env.WEB_IP}"'
 """
 }
 }
@@ -120,7 +96,11 @@ ${env.APP_IP} ansible_user=ec2-user ansible_ssh_common_args='-o ProxyCommand="ss
 ```
     stage('Wait for Instances') {
         steps {
-            sh 'sleep 120'
+            sh '''
+            cd ${ANSIBLE_DIR}
+            export ANSIBLE_HOST_KEY_CHECKING=False
+            ansible -i inventory.ini web -m wait_for_connection --timeout=300
+            '''
         }
     }
 
@@ -137,13 +117,16 @@ ${env.APP_IP} ansible_user=ec2-user ansible_ssh_common_args='-o ProxyCommand="ss
                 chmod 400 $KEY_FILE
                 export ANSIBLE_HOST_KEY_CHECKING=False
 
-                ansible -i inventory.ini web -m ping --private-key $KEY_FILE
                 ansible-playbook -i inventory.ini web.yml --private-key $KEY_FILE
-
-                ansible -i inventory.ini app -m ping --private-key $KEY_FILE
                 ansible-playbook -i inventory.ini app.yml --private-key $KEY_FILE
                 '''
             }
+        }
+    }
+
+    stage('Health Check') {
+        steps {
+            sh "curl -f http://${env.WEB_IP}"
         }
     }
 }
