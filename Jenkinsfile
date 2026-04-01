@@ -36,7 +36,7 @@ pipeline {
                     )
                 ]) {
                     dir("${TF_DIR}") {
-                        sh '''
+                        bat '''
                         terraform init
                         terraform validate
                         terraform plan -var-file="terraform.tfvars" -out=tfplan
@@ -51,12 +51,12 @@ pipeline {
             steps {
                 dir("${TF_DIR}") {
                     script {
-                        env.WEB_IP = sh(
+                        env.WEB_IP = bat(
                             script: "terraform output -raw web_public_ip",
                             returnStdout: true
                         ).trim()
 
-                        env.APP_IP = sh(
+                        env.APP_IP = bat(
                             script: "terraform output -raw app_private_ip",
                             returnStdout: true
                         ).trim()
@@ -88,36 +88,34 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
 
         stage('Wait for Instances') {
             steps {
-                sh """
+                bat """
                 cd ${ANSIBLE_DIR}
-                export ANSIBLE_HOST_KEY_CHECKING=False
-                ansible -i inventory.ini web -m wait_for_connection --timeout=300
+                set ANSIBLE_HOST_KEY_CHECKING=False
+
+                wsl ansible --version
+
+                wsl ansible -i inventory.ini web -m wait_for_connection --timeout=300
                 """
             }
         }
 
         stage('Run Ansible') {
             steps {
-                sh """
+                bat """
                 cd ${ANSIBLE_DIR}
 
-                echo "Running as:"
-                whoami
+                echo Running Ansible...
 
-                echo "Checking Ansible:"
-                which ansible
-                ansible --version
+                wsl ansible --version
 
-                export ANSIBLE_HOST_KEY_CHECKING=False
-
-                ansible -i inventory.ini web -m wait_for_connection --timeout=300
+                wsl ansible-playbook -i inventory.ini playbook.yml
                 """
             }
         }
 
         stage('Health Check') {
             steps {
-                sh "curl -f http://${env.WEB_IP}"
+                bat "curl -f http://${env.WEB_IP}"
             }
         }
     }
