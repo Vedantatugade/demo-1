@@ -1,6 +1,6 @@
 my_ip            = "223.228.61.213/32"
 ami_id           = "ami-0f3caa1cf4417e51b"
-key_name         = "my-tf-key"
+key_name         = "new-tf-key"
 
 vpc_id            = "vpc-0e4969a93ad3005e2"
 public_subnet_id  = "subnet-0845a3a795fbf2ce2"
