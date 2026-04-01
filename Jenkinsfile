@@ -36,7 +36,6 @@ pipeline {
                     )
                 ]) {
                     dir("${TF_DIR}") {
-
                         bat 'terraform init'
                         bat 'terraform validate'
                         bat 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
@@ -48,19 +47,29 @@ pipeline {
 
         stage('Fetch IPs') {
             steps {
-                script {
-                    env.WEB_IP = bat(
-                        script: "cd ${TF_DIR} && terraform output -raw web_public_ip",
-                        returnStdout: true
-                    ).trim()
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-creds',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    dir("${TF_DIR}") {
+                        script {
+                            env.WEB_IP = bat(
+                                script: "terraform output -raw web_public_ip",
+                                returnStdout: true
+                            ).trim()
 
-                    env.APP_IP = bat(
-                        script: "cd ${TF_DIR} && terraform output -raw app_private_ip",
-                        returnStdout: true
-                    ).trim()
+                            env.APP_IP = bat(
+                                script: "terraform output -raw app_private_ip",
+                                returnStdout: true
+                            ).trim()
 
-                    echo "WEB_IP=${env.WEB_IP}"
-                    echo "APP_IP=${env.APP_IP}"
+                            echo "WEB_IP=${env.WEB_IP}"
+                            echo "APP_IP=${env.APP_IP}"
+                        }
+                    }
                 }
             }
         }
@@ -103,10 +112,7 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP}"'
                 ]) {
                     bat """
                     cd ${ANSIBLE_DIR}
-
-                    REM Fix key permission for Windows
                     icacls %KEY_FILE% /inheritance:r
-
                     set ANSIBLE_HOST_KEY_CHECKING=False
 
                     ansible-playbook -i inventory.ini web.yml --private-key %KEY_FILE%
