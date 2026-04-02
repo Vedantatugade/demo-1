@@ -5,38 +5,38 @@
 
   tasks:
 
-  * name: Update package cache
+  - name: Update package cache
     dnf:
     update_cache: yes
 
-  * name: Install nginx
+  - name: Install nginx
     dnf:
     name: nginx
     state: present
 
-  * name: Start and enable nginx
+  - name: Start and enable nginx
     service:
     name: nginx
     state: started
     enabled: yes
 
-* name: Install MySQL on App Tier
+- name: Install MySQL on App Tier
   hosts: app
   become: yes
   gather_facts: yes
 
   tasks:
 
-  * name: Update package cache
+   name: Update package cache
     dnf:
     update_cache: yes
 
-  * name: Install MySQL server
+   name: Install MySQL server
     dnf:
     name: mysql-server
     state: present
 
-  * name: Start and enable MySQL
+   name: Start and enable MySQL
     service:
     name: mysqld
     state: started
