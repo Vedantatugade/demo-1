@@ -10,7 +10,7 @@ environment {
     // SSH key (WSL path)
     KEY_PATH = '/home/vedant/.ssh/my-tf-key.pem'
 
-    // Terraform plugin cache (🚀 speeds up builds)
+    // Terraform plugin cache
     TF_PLUGIN_CACHE_DIR = 'C:\\terraform-cache'
 }
 
@@ -44,6 +44,9 @@ stages {
             ]) {
                 dir("${TF_DIR}") {
                     bat '''
+                    set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                    set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+
                     terraform init -upgrade=false
                     terraform validate
                     terraform apply -auto-approve -var-file="terraform.tfvars"
@@ -55,31 +58,23 @@ stages {
 
     stage('Fetch IPs') {
         steps {
-            withCredentials([
-                usernamePassword(
-                    credentialsId: 'aws-creds',
-                    usernameVariable: 'AWS_ACCESS_KEY_ID',
-                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                )
-            ]) {
-                dir("${TF_DIR}") {
-                    script {
-                        def webOutput = bat(
-                            script: "terraform output -raw web_public_ip",
-                            returnStdout: true
-                        ).trim()
+            dir("${TF_DIR}") {
+                script {
+                    def webOutput = bat(
+                        script: "terraform output -raw web_public_ip",
+                        returnStdout: true
+                    ).trim()
 
-                        def appOutput = bat(
-                            script: "terraform output -raw app_private_ip",
-                            returnStdout: true
-                        ).trim()
+                    def appOutput = bat(
+                        script: "terraform output -raw app_private_ip",
+                        returnStdout: true
+                    ).trim()
 
-                        env.WEB_IP = webOutput.tokenize('\n')[-1].trim()
-                        env.APP_IP = appOutput.tokenize('\n')[-1].trim()
+                    env.WEB_IP = webOutput.tokenize('\n')[-1].trim()
+                    env.APP_IP = appOutput.tokenize('\n')[-1].trim()
 
-                        echo "WEB_IP=${env.WEB_IP}"
-                        echo "APP_IP=${env.APP_IP}"
-                    }
+                    echo "WEB_IP=${env.WEB_IP}"
+                    echo "APP_IP=${env.APP_IP}"
                 }
             }
         }
