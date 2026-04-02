@@ -20,13 +20,6 @@
     state: started
     enabled: yes
 
-  * name: Verify nginx is running
-    shell: systemctl status nginx
-    register: nginx_status
-
-  * debug:
-    var: nginx_status.stdout_lines
-
 * name: Install MySQL on App Tier
   hosts: app
   become: yes
@@ -48,10 +41,3 @@
     name: mysqld
     state: started
     enabled: yes
-
-  * name: Verify MySQL is running
-    shell: systemctl status mysqld
-    register: mysql_status
-
-  * debug:
-    var: mysql_status.stdout_lines
