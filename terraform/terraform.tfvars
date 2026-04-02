@@ -1,4 +1,4 @@
-ami_id = "ami-0c02fb55956c7d316"
+ami_id = "ami-01b14b7ad41e17ba4"
 key_name = "my-tf-key"
 
 vpc_id            = "vpc-0e4969a93ad3005e2"
