@@ -1,5 +1,3 @@
-
-
 ########################################
 # DATA SOURCES
 ########################################
@@ -39,7 +37,7 @@ data "aws_security_group" "app_sg" {
 
 resource "aws_instance" "web" {
   ami           = var.ami_id
-  instance_type = "t3.micro"   # ✅ HARDCODED FIX
+  instance_type = "t3.micro"
   key_name      = var.key_name
 
   subnet_id              = data.aws_subnet.public_subnet.id
@@ -59,7 +57,7 @@ resource "aws_instance" "web" {
 
 resource "aws_instance" "app" {
   ami           = var.ami_id
-  instance_type = "t3.micro"   # ✅ HARDCODED FIX
+  instance_type = "t3.micro"
   key_name      = var.key_name
 
   subnet_id              = data.aws_subnet.private_subnet.id
@@ -71,16 +69,4 @@ resource "aws_instance" "app" {
   tags = {
     Name = "app-tier"
   }
-}
-
-########################################
-# OUTPUTS
-########################################
-
-output "web_public_ip" {
-  value = aws_instance.web.public_ip
-}
-
-output "app_private_ip" {
-  value = aws_instance.app.private_ip
 }
