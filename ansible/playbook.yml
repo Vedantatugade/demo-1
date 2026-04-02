@@ -1,4 +1,4 @@
-* name: Install Nginx on Web Tier
+- name: Install Nginx on Web Tier
   hosts: web
   become: yes
   gather_facts: yes
