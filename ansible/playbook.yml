@@ -18,3 +18,22 @@
         name: nginx
         state: started
         enabled: yes
+
+
+- name: Install MySQL on App Tier
+  hosts: app
+  become: yes
+  gather_facts: no
+
+  tasks:
+
+    - name: Install MySQL server
+      shell: |
+        dnf update -y
+        dnf install mysql-server -y
+
+    - name: Start MySQL
+      service:
+        name: mysqld
+        state: started
+        enabled: yes
