@@ -1,36 +1,57 @@
-- name: Install Nginx on Web Tier
+* name: Install Nginx on Web Tier
   hosts: web
   become: yes
-  gather_facts: no
+  gather_facts: yes
 
   tasks:
 
-    - name: Install nginx
-      dnf:
-        name: nginx
-        state: present
+  * name: Update package cache
+    dnf:
+    update_cache: yes
 
-    - name: Start nginx
-      service:
-        name: nginx
-        state: started
-        enabled: yes
+  * name: Install nginx
+    dnf:
+    name: nginx
+    state: present
 
+  * name: Start and enable nginx
+    service:
+    name: nginx
+    state: started
+    enabled: yes
 
-- name: Install MySQL on App Tier
+  * name: Verify nginx is running
+    shell: systemctl status nginx
+    register: nginx_status
+
+  * debug:
+    var: nginx_status.stdout_lines
+
+* name: Install MySQL on App Tier
   hosts: app
   become: yes
-  gather_facts: no
+  gather_facts: yes
 
   tasks:
 
-    - name: Install MySQL server
-      dnf:
-        name: mysql-server
-        state: present
+  * name: Update package cache
+    dnf:
+    update_cache: yes
 
-    - name: Start MySQL
-      service:
-        name: mysqld
-        state: started
-        enabled: yes
+  * name: Install MySQL server
+    dnf:
+    name: mysql-server
+    state: present
+
+  * name: Start and enable MySQL
+    service:
+    name: mysqld
+    state: started
+    enabled: yes
+
+  * name: Verify MySQL is running
+    shell: systemctl status mysqld
+    register: mysql_status
+
+  * debug:
+    var: mysql_status.stdout_lines
