@@ -42,7 +42,7 @@ pipeline {
                         terraform init
                         terraform validate
 
-                        REM ❗ REMOVE tfplan usage
+                        REM Always use fresh apply (NO tfplan)
                         terraform apply -auto-approve -var-file="terraform.tfvars"
                         '''
                     }
@@ -94,27 +94,33 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
 
         stage('Fix Key Permission') {
             steps {
-                bat """
-                wsl chmod 400 ${KEY_PATH}
-                """
+                bat "wsl chmod 400 ${KEY_PATH}"
             }
         }
 
-       stage('Wait for EC2 Boot') {
-    steps {
-        echo "Waiting for EC2 to boot..."
-        sleep(time: 60, unit: 'SECONDS')
-    }
-}
-        
+        stage('Wait for EC2 Boot') {
+            steps {
+                echo "Waiting for EC2 to boot..."
+                sleep(time: 60, unit: 'SECONDS')
+            }
+        }
+
         stage('Wait for SSH') {
             steps {
                 bat """
                 cd ${ANSIBLE_DIR}
                 set ANSIBLE_HOST_KEY_CHECKING=False
 
-                echo Testing SSH...
-                wsl ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} "echo connected"
+                echo Testing SSH with retry...
+
+                wsl bash -c "
+                for i in {1..10}; do
+                  ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} 'echo connected' && exit 0
+                  echo 'Retrying SSH...'
+                  sleep 10
+                done
+                exit 1
+                "
                 """
             }
         }
@@ -133,7 +139,7 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
 
         stage('Health Check') {
             steps {
-                bat "curl -f http://${env.WEB_IP}"
+                bat "curl.exe -f http://${env.WEB_IP}"
             }
         }
     }
