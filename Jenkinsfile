@@ -41,8 +41,9 @@ pipeline {
                         bat '''
                         terraform init
                         terraform validate
-                        terraform plan -var-file="terraform.tfvars" -out=tfplan
-                        terraform apply -auto-approve tfplan
+
+                        REM ❗ REMOVE tfplan usage
+                        terraform apply -auto-approve -var-file="terraform.tfvars"
                         '''
                     }
                 }
@@ -99,13 +100,21 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
             }
         }
 
-        stage('Wait for Instances') {
+       stage('Wait for EC2 Boot') {
+    steps {
+        echo "Waiting for EC2 to boot..."
+        sleep(time: 60, unit: 'SECONDS')
+    }
+}
+        
+        stage('Wait for SSH') {
             steps {
                 bat """
                 cd ${ANSIBLE_DIR}
                 set ANSIBLE_HOST_KEY_CHECKING=False
 
-                wsl ansible -i inventory.ini web -m ping
+                echo Testing SSH...
+                wsl ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} "echo connected"
                 """
             }
         }
