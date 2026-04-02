@@ -1,15 +1,19 @@
 - name: Install Nginx on Web Tier
   hosts: web
   become: yes
+  gather_facts: no
 
   tasks:
 
-    - name: Install Nginx
-      dnf:
+    - name: Enable nginx repo
+      shell: amazon-linux-extras enable nginx1
+
+    - name: Install nginx
+      yum:
         name: nginx
         state: present
 
-    - name: Start Nginx
+    - name: Start nginx
       service:
         name: nginx
         state: started
