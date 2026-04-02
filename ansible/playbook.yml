@@ -5,11 +5,8 @@
 
   tasks:
 
-    - name: Enable nginx repo
-      shell: amazon-linux-extras enable nginx1
-
     - name: Install nginx
-      yum:
+      dnf:
         name: nginx
         state: present
 
@@ -28,9 +25,9 @@
   tasks:
 
     - name: Install MySQL server
-      shell: |
-        dnf update -y
-        dnf install mysql-server -y
+      dnf:
+        name: mysql-server
+        state: present
 
     - name: Start MySQL
       service:
