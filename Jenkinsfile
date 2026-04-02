@@ -6,7 +6,8 @@ pipeline {
         ANSIBLE_DIR = 'ansible'
         AWS_DEFAULT_REGION = 'us-east-1'
 
-        KEY_PATH = '/mnt/c/Users/Shubham/OneDrive/Desktop/demo-1/my-tf-key.pem'
+        // ✅ FIXED KEY PATH (WSL)
+        KEY_PATH = '/home/vedant/.ssh/my-tf-key.pem'
     }
 
     options {
@@ -41,8 +42,6 @@ pipeline {
                         bat '''
                         terraform init
                         terraform validate
-
-                        REM Always use fresh apply (NO tfplan)
                         terraform apply -auto-approve -var-file="terraform.tfvars"
                         '''
                     }
@@ -51,36 +50,36 @@ pipeline {
         }
 
         stage('Fetch IPs') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'aws-creds',
-                usernameVariable: 'AWS_ACCESS_KEY_ID',
-                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-            )
-        ]) {
-            dir("${TF_DIR}") {
-                script {
-                    def webOutput = bat(
-                        script: "terraform output -raw web_public_ip",
-                        returnStdout: true
-                    ).trim()
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-creds',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    dir("${TF_DIR}") {
+                        script {
+                            def webOutput = bat(
+                                script: "terraform output -raw web_public_ip",
+                                returnStdout: true
+                            ).trim()
 
-                    def appOutput = bat(
-                        script: "terraform output -raw app_private_ip",
-                        returnStdout: true
-                    ).trim()
+                            def appOutput = bat(
+                                script: "terraform output -raw app_private_ip",
+                                returnStdout: true
+                            ).trim()
 
-                    env.WEB_IP = webOutput.tokenize('\n')[-1].trim()
-                    env.APP_IP = appOutput.tokenize('\n')[-1].trim()
+                            env.WEB_IP = webOutput.tokenize('\n')[-1].trim()
+                            env.APP_IP = appOutput.tokenize('\n')[-1].trim()
 
-                    echo "WEB_IP=${env.WEB_IP}"
-                    echo "APP_IP=${env.APP_IP}"
+                            echo "WEB_IP=${env.WEB_IP}"
+                            echo "APP_IP=${env.APP_IP}"
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         stage('Create Inventory') {
             steps {
@@ -100,12 +99,6 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
             }
         }
 
-        stage('Fix Key Permission') {
-            steps {
-                bat "wsl chmod 400 ${KEY_PATH}"
-            }
-        }
-
         stage('Wait for EC2 Boot') {
             steps {
                 echo "Waiting for EC2 to boot..."
@@ -114,17 +107,19 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
         }
 
         stage('Wait for SSH') {
-    steps {
-        bat """
-        cd ${ANSIBLE_DIR}
-        set ANSIBLE_HOST_KEY_CHECKING=False
+            steps {
+                retry(5) {
+                    bat """
+                    cd ${ANSIBLE_DIR}
+                    set ANSIBLE_HOST_KEY_CHECKING=False
 
-        echo Testing SSH...
+                    echo Testing SSH...
 
-        wsl ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} "echo connected"
-        """
-    }
-}
+                    wsl ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} "echo connected"
+                    """
+                }
+            }
+        }
 
         stage('Run Ansible') {
             steps {
