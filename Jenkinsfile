@@ -114,24 +114,17 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
         }
 
         stage('Wait for SSH') {
-            steps {
-                bat """
-                cd ${ANSIBLE_DIR}
-                set ANSIBLE_HOST_KEY_CHECKING=False
+    steps {
+        bat """
+        cd ${ANSIBLE_DIR}
+        set ANSIBLE_HOST_KEY_CHECKING=False
 
-                echo Testing SSH with retry...
+        echo Testing SSH...
 
-                wsl bash -c "
-                for i in {1..10}; do
-                  ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} 'echo connected' && exit 0
-                  echo 'Retrying SSH...'
-                  sleep 10
-                done
-                exit 1
-                "
-                """
-            }
-        }
+        wsl ssh -o StrictHostKeyChecking=no -i ${KEY_PATH} ec2-user@${env.WEB_IP} "echo connected"
+        """
+    }
+}
 
         stage('Run Ansible') {
             steps {
