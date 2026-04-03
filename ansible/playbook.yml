@@ -1,21 +1,25 @@
-- name: Configure Web Server
+- name: Configure Web Server (Nginx)
   hosts: web
   become: yes
 
   tasks:
-    - name: Install httpd
+    - name: Update package cache
       dnf:
-        name: httpd
+        update_cache: yes
+
+    - name: Install Nginx
+      dnf:
+        name: nginx
         state: present
 
-    - name: Start httpd
+    - name: Start and enable Nginx
       service:
-        name: httpd
+        name: nginx
         state: started
         enabled: true
 
 
-- name: Configure App Server
+- name: Configure App Server (MySQL)
   hosts: app
   become: yes
 
@@ -24,7 +28,20 @@
       dnf:
         update_cache: yes
 
-    - name: Install python3
+    - name: Install MySQL Server
       dnf:
-        name: python3
+        name: mysql-server
         state: present
+
+    - name: Start and enable MySQL
+      service:
+        name: mysqld
+        state: started
+        enabled: true
+
+    - name: Ensure MySQL is running
+      shell: systemctl status mysqld
+      register: mysql_status
+
+    - debug:
+        var: mysql_status.stdout
