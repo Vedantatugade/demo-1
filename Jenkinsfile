@@ -124,16 +124,15 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
         
 
         stage('Run Ansible') {
-            steps {
-                bat """
-                cd ${ANSIBLE_DIR}
-
-                echo Running Ansible...
-
-                wsl ansible-playbook -vvv -i inventory.ini playbook.yml
-                """
-            }
-        }
+    steps {
+        bat """
+        wsl bash -c "
+        cd /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible && \
+        ansible-playbook -vvv -i inventory.ini playbook.yml
+        "
+        """
+    }
+}
 
         stage('Health Check') {
             steps {
