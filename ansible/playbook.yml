@@ -1,43 +1,30 @@
-- name: Install Nginx on Web Tier
+- name: Configure Web Server
   hosts: web
   become: yes
-  gather_facts: yes
 
   tasks:
+    - name: Install httpd
+      dnf:
+        name: httpd
+        state: present
 
-  - name: Update package cache
-    dnf:
-    update_cache: yes
+    - name: Start httpd
+      service:
+        name: httpd
+        state: started
+        enabled: true
 
-  - name: Install nginx
-    dnf:
-    name: nginx
-    state: present
 
-  - name: Start and enable nginx
-    service:
-    name: nginx
-    state: started
-    enabled: yes
-
-- name: Install MySQL on App Tier
+- name: Configure App Server
   hosts: app
   become: yes
-  gather_facts: yes
 
   tasks:
+    - name: Update package cache
+      dnf:
+        update_cache: yes
 
-   name: Update package cache
-    dnf:
-    update_cache: yes
-
-   name: Install MySQL server
-    dnf:
-    name: mysql-server
-    state: present
-
-   name: Start and enable MySQL
-    service:
-    name: mysqld
-    state: started
-    enabled: yes
+    - name: Install python3
+      dnf:
+        name: python3
+        state: present
