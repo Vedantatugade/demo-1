@@ -113,19 +113,16 @@ ${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user
             }
         }
 
-        // 🔥 FINAL FIXED STAGE
         stage('Run Ansible (FINAL)') {
     steps {
         bat """
-        wsl bash -c 'export AWS_DEFAULT_REGION=us-east-1 && \
-        /home/vedant/ansible-venv/bin/python -m ansible.playbook \
-        -vvv \
-        -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini \
-        /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml'
+        wsl /home/vedant/ansible-venv/bin/python -m ansible.playbook ^
+        -vvv ^
+        -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini ^
+        /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml
         """
     }
 }
-
         stage('Health Check') {
             steps {
                 echo "Deployment Completed Successfully"
