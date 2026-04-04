@@ -15,13 +15,13 @@
 - hosts: app
   become: yes
   tasks:
-    - name: Install MySQL
+    - name: Install MariaDB
       dnf:
-        name: mysql-server
+        name: mariadb-server
         state: present
 
-    - name: Start MySQL
+    - name: Start MariaDB
       service:
-        name: mysqld
+        name: mariadb
         state: started
         enabled: yes
