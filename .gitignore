@@ -7,3 +7,6 @@ node_modules/
 *.log
 .vscode/
 config.js
+
+# sensitive files
+application-code/app-tier/DbConfig.js
