@@ -113,22 +113,16 @@ ${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user
             }
         }
 
-        stage('Run Ansible (FINAL)') {
+        stage('Run Ansible (FINAL SUCCESS)') {
     steps {
         bat """
-        wsl /home/vedant/ansible-venv/bin/python -m ansible.playbook ^
+        wsl /home/vedant/ansible-venv/bin/ansible-playbook ^
         -vvv ^
         -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini ^
         /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml
         """
     }
 }
-        stage('Health Check') {
-            steps {
-                echo "Deployment Completed Successfully"
-            }
-        }
-    }
 
     post {
         success {
