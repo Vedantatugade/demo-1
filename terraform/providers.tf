@@ -7,9 +7,10 @@ terraform {
   }
 
   backend "s3" {
-  bucket = "last-one-1"
-  key    = "terraform.tfstate"
-  region = "us-east-1"
+    bucket = "last-one-1"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+  }
 }
 
 provider "aws" {
