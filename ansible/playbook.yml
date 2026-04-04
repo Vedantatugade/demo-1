@@ -17,7 +17,7 @@
   tasks:
     - name: Install MariaDB
       dnf:
-        name: mariadb-server
+        name: mariadb105-server
         state: present
 
     - name: Start MariaDB
