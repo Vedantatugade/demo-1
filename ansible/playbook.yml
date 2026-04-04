@@ -1,47 +1,27 @@
-- name: Configure Web Server (Nginx)
-  hosts: web
+- hosts: web
   become: yes
-
   tasks:
-    - name: Update package cache
-      dnf:
-        update_cache: yes
-
     - name: Install Nginx
       dnf:
         name: nginx
         state: present
 
-    - name: Start and enable Nginx
+    - name: Start Nginx
       service:
         name: nginx
         state: started
-        enabled: true
+        enabled: yes
 
-
-- name: Configure App Server (MySQL)
-  hosts: app
+- hosts: app
   become: yes
-
   tasks:
-    - name: Update package cache
-      dnf:
-        update_cache: yes
-
-    - name: Install MySQL Server
+    - name: Install MySQL
       dnf:
         name: mysql-server
         state: present
 
-    - name: Start and enable MySQL
+    - name: Start MySQL
       service:
         name: mysqld
         state: started
-        enabled: true
-
-    - name: Ensure MySQL is running
-      shell: systemctl status mysqld
-      register: mysql_status
-
-    - debug:
-        var: mysql_status.stdout
+        enabled: yes
