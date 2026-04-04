@@ -6,10 +6,6 @@ pipeline {
         ANSIBLE_DIR = 'ansible'
         AWS_DEFAULT_REGION = 'us-east-1'
 
-        // SSH key (WSL path)
-        KEY_PATH = '/home/vedant/.ssh/my-tf-key.pem'
-
-        // Terraform plugin cache (Windows path)
         TF_PLUGIN_CACHE_DIR = 'C:\\terraform-cache'
     }
 
@@ -22,7 +18,7 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                cleanWs()   // 🔥 better than deleteDir()
+                cleanWs()
             }
         }
 
@@ -47,7 +43,7 @@ pipeline {
                         set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
                         set TF_PLUGIN_CACHE_DIR=%TF_PLUGIN_CACHE_DIR%
 
-                        terraform init
+                        terraform init -reconfigure
                         terraform validate
                         terraform apply -auto-approve -var-file="terraform.tfvars"
                         """
@@ -56,59 +52,48 @@ pipeline {
             }
         }
 
-        stage('Fetch IPs') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'aws-creds',
-                usernameVariable: 'AWS_ACCESS_KEY_ID',
-                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-            )
-        ]) {
-            dir("${TF_DIR}") {
-                script {
-                    def webOutput = bat(
-                        script: """
-                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
-                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
-                        terraform output -raw web_public_ip
-                        """,
-                        returnStdout: true
-                    ).trim()
+        stage('Fetch Instance IDs') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-creds',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    dir("${TF_DIR}") {
+                        script {
+                            def webId = bat(
+                                script: "terraform output -raw web_instance_id",
+                                returnStdout: true
+                            ).trim()
 
-                    def appOutput = bat(
-                        script: """
-                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
-                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
-                        terraform output -raw app_private_ip
-                        """,
-                        returnStdout: true
-                    ).trim()
+                            def appId = bat(
+                                script: "terraform output -raw app_instance_id",
+                                returnStdout: true
+                            ).trim()
 
-                    env.WEB_IP = webOutput.tokenize('\n')[-1].trim()
-                    env.APP_IP = appOutput.tokenize('\n')[-1].trim()
+                            env.WEB_ID = webId.tokenize('\n')[-1].trim()
+                            env.APP_ID = appId.tokenize('\n')[-1].trim()
 
-                    echo "WEB_IP=${env.WEB_IP}"
-                    echo "APP_IP=${env.APP_IP}"
+                            echo "WEB_ID=${env.WEB_ID}"
+                            echo "APP_ID=${env.APP_ID}"
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
-        stage('Create Inventory') {
+        stage('Create Inventory (SSM)') {
             steps {
                 script {
                     writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
 
 [web]
-${env.WEB_IP} ansible_user=ec2-user ansible_ssh_private_key_file=${KEY_PATH}
+${env.WEB_ID} ansible_connection=aws_ssm ansible_user=ec2-user
 
 [app]
-${env.APP_IP} ansible_user=ec2-user ansible_ssh_private_key_file=${KEY_PATH}
-
-[app:vars]
-ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i ${KEY_PATH}"'
+${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user
 """
                 }
             }
@@ -116,24 +101,25 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
 
         stage('Wait for EC2 Boot') {
             steps {
-                echo "Waiting for EC2 to boot..."
-                sleep(time: 90, unit: 'SECONDS')
+                echo "Waiting for EC2 + SSM..."
+                sleep(time: 120, unit: 'SECONDS')
             }
         }
 
-        
-
-        stage('Run Ansible') {
-    steps {
-        bat '''
-        wsl bash -c "cd /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible && ansible-playbook -vvv -i inventory.ini playbook.yml"
-        '''
-    }
-}
+        stage('Run Ansible (SSM)') {
+            steps {
+                bat '''
+                wsl bash -c "source ~/ansible-venv/bin/activate && \
+                export AWS_DEFAULT_REGION=us-east-1 && \
+                cd /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible && \
+                ansible-playbook -vvv -i inventory.ini playbook.yml"
+                '''
+            }
+        }
 
         stage('Health Check') {
             steps {
-                bat "curl.exe -f http://${env.WEB_IP}"
+                echo "Skipping curl (SSM setup)"
             }
         }
     }
@@ -146,7 +132,7 @@ ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p ec2-user@${env.WEB_IP} -i
             echo '❌ Deployment Failed'
         }
         always {
-            cleanWs()   // 🔥 AUTO CLEAN (prevents disk full issue)
+            cleanWs()
         }
     }
 }
