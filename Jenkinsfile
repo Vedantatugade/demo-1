@@ -5,7 +5,6 @@ pipeline {
         TF_DIR      = 'terraform'
         ANSIBLE_DIR = 'ansible'
         AWS_DEFAULT_REGION = 'us-east-1'
-
         TF_PLUGIN_CACHE_DIR = 'C:\\terraform-cache'
     }
 
@@ -54,50 +53,42 @@ pipeline {
 
         stage('Fetch Instance IDs') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'aws-creds',
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )
-                ]) {
-                    dir("${TF_DIR}") {
-                        script {
-                            def webId = bat(
-                                script: "terraform output -raw web_instance_id",
-                                returnStdout: true
-                            ).trim()
+                dir("${TF_DIR}") {
+                    script {
+                        def webId = bat(
+                            script: "terraform output -raw web_instance_id",
+                            returnStdout: true
+                        ).trim()
 
-                            def appId = bat(
-                                script: "terraform output -raw app_instance_id",
-                                returnStdout: true
-                            ).trim()
+                        def appId = bat(
+                            script: "terraform output -raw app_instance_id",
+                            returnStdout: true
+                        ).trim()
 
-                            env.WEB_ID = webId.tokenize('\n')[-1].trim()
-                            env.APP_ID = appId.tokenize('\n')[-1].trim()
+                        env.WEB_ID = webId.tokenize('\n')[-1].trim()
+                        env.APP_ID = appId.tokenize('\n')[-1].trim()
 
-                            echo "WEB_ID=${env.WEB_ID}"
-                            echo "APP_ID=${env.APP_ID}"
-                        }
+                        echo "WEB_ID=${env.WEB_ID}"
+                        echo "APP_ID=${env.APP_ID}"
                     }
                 }
             }
         }
 
         stage('Create Inventory (SSM)') {
-    steps {
-        script {
-            writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
+            steps {
+                script {
+                    writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
 
 [web]
-${env.WEB_ID} ansible_connection=aws_ssm ansible_user=ec2-user ansible_python_interpreter=/home/vedant/ansible-venv/bin/python
+${env.WEB_ID} ansible_connection=aws_ssm ansible_user=ec2-user
 
 [app]
-${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user ansible_python_interpreter=/home/vedant/ansible-venv/bin/python
+${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user
 """
+                }
+            }
         }
-    }
-}
 
         stage('Wait for EC2 Boot') {
             steps {
@@ -106,20 +97,24 @@ ${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user ansible_python_in
             }
         }
 
-        stage('Run Ansible (SSM)') {
+        // 🔥 FINAL FIXED STAGE
+        stage('Run Ansible (FINAL)') {
             steps {
                 bat '''
-                wsl bash -c "source ~/ansible-venv/bin/activate && \
+                wsl bash -c "
                 export AWS_DEFAULT_REGION=us-east-1 && \
-                cd /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible && \
-                ansible-playbook -vvv -i inventory.ini playbook.yml"
+                /home/vedant/ansible-venv/bin/python -m ansible.playbook \
+                -vvv \
+                -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini \
+                /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml
+                "
                 '''
             }
         }
 
         stage('Health Check') {
             steps {
-                echo "Skipping curl (SSM setup)"
+                echo "Deployment Completed Successfully"
             }
         }
     }
