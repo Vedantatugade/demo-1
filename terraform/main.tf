@@ -14,13 +14,14 @@ data "aws_subnet" "private_subnet" {
   id = var.private_subnet_id
 }
 
+# ✅ Use existing IAM ROLE
 data "aws_iam_role" "ec2_role" {
   name = "new-final"
 }
 
-resource "aws_iam_instance_profile" "ec2_profile" {
+# ✅ Use existing INSTANCE PROFILE (IMPORTANT FIX)
+data "aws_iam_instance_profile" "ec2_profile" {
   name = "new-final-profile"
-  role = data.aws_iam_role.ec2_role.name
 }
 
 data "aws_security_group" "web_sg" {
@@ -44,7 +45,9 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = [data.aws_security_group.web_sg.id]
 
   associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
+
+  # ✅ Attach existing instance profile
+  iam_instance_profile = data.aws_iam_instance_profile.ec2_profile.name
 
   tags = {
     Name = "web-tier"
@@ -64,7 +67,9 @@ resource "aws_instance" "app" {
   vpc_security_group_ids = [data.aws_security_group.app_sg.id]
 
   associate_public_ip_address = false
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
+
+  # ✅ Attach existing instance profile
+  iam_instance_profile = data.aws_iam_instance_profile.ec2_profile.name
 
   tags = {
     Name = "app-tier"
