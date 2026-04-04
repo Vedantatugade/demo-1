@@ -97,10 +97,10 @@ pipeline {
             writeFile file: "${ANSIBLE_DIR}/inventory.ini", text: """
 
 [web]
-${env.WEB_ID} ansible_connection=amazon.aws.aws_ssm ansible_user=ec2-user ansible_aws_ssm_region=us-east-1
+${env.WEB_ID} ansible_connection=amazon.aws.aws_ssm ansible_user=ec2-user ansible_aws_ssm_region=us-east-1 ansible_remote_tmp=/tmp ansible_shell_type=sh
 
 [app]
-${env.APP_ID} ansible_connection=amazon.aws.aws_ssm ansible_user=ec2-user ansible_aws_ssm_region=us-east-1
+${env.APP_ID} ansible_connection=amazon.aws.aws_ssm ansible_user=ec2-user ansible_aws_ssm_region=us-east-1 ansible_remote_tmp=/tmp ansible_shell_type=sh
 """
         }
     }
