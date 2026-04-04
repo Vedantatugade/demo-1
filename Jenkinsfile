@@ -52,28 +52,44 @@ pipeline {
         }
 
         stage('Fetch Instance IDs') {
-            steps {
-                dir("${TF_DIR}") {
-                    script {
-                        def webId = bat(
-                            script: "terraform output -raw web_instance_id",
-                            returnStdout: true
-                        ).trim()
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'aws-creds',
+                usernameVariable: 'AWS_ACCESS_KEY_ID',
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            )
+        ]) {
+            dir("${TF_DIR}") {
+                script {
+                    def webId = bat(
+                        script: """
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        terraform output -raw web_instance_id
+                        """,
+                        returnStdout: true
+                    ).trim()
 
-                        def appId = bat(
-                            script: "terraform output -raw app_instance_id",
-                            returnStdout: true
-                        ).trim()
+                    def appId = bat(
+                        script: """
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        terraform output -raw app_instance_id
+                        """,
+                        returnStdout: true
+                    ).trim()
 
-                        env.WEB_ID = webId.tokenize('\n')[-1].trim()
-                        env.APP_ID = appId.tokenize('\n')[-1].trim()
+                    env.WEB_ID = webId.tokenize('\\n')[-1].trim()
+                    env.APP_ID = appId.tokenize('\\n')[-1].trim()
 
-                        echo "WEB_ID=${env.WEB_ID}"
-                        echo "APP_ID=${env.APP_ID}"
-                    }
+                    echo "WEB_ID=${env.WEB_ID}"
+                    echo "APP_ID=${env.APP_ID}"
                 }
             }
         }
+    }
+}
 
         stage('Create Inventory (SSM)') {
             steps {
