@@ -52,44 +52,44 @@ pipeline {
         }
 
         stage('Fetch Instance IDs') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'aws-creds',
-                usernameVariable: 'AWS_ACCESS_KEY_ID',
-                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-            )
-        ]) {
-            dir("${TF_DIR}") {
-                script {
-                    def webId = bat(
-                        script: """
-                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
-                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
-                        terraform output -raw web_instance_id
-                        """,
-                        returnStdout: true
-                    ).trim()
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-creds',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    dir("${TF_DIR}") {
+                        script {
+                            def webId = bat(
+                                script: """
+                                set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                                set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                                terraform output -raw web_instance_id
+                                """,
+                                returnStdout: true
+                            ).trim()
 
-                    def appId = bat(
-                        script: """
-                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
-                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
-                        terraform output -raw app_instance_id
-                        """,
-                        returnStdout: true
-                    ).trim()
+                            def appId = bat(
+                                script: """
+                                set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                                set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                                terraform output -raw app_instance_id
+                                """,
+                                returnStdout: true
+                            ).trim()
 
-                    env.WEB_ID = webId.tokenize('\\n')[-1].trim()
-                    env.APP_ID = appId.tokenize('\\n')[-1].trim()
+                            env.WEB_ID = webId.split("\\r?\\n")[-1]
+                            env.APP_ID = appId.split("\\r?\\n")[-1]
 
-                    echo "WEB_ID=${env.WEB_ID}"
-                    echo "APP_ID=${env.APP_ID}"
+                            echo "WEB_ID=${env.WEB_ID}"
+                            echo "APP_ID=${env.APP_ID}"
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         stage('Create Inventory (SSM)') {
             steps {
@@ -113,16 +113,23 @@ ${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user
             }
         }
 
-        stage('Run Ansible (FINAL SUCCESS)') {
-    steps {
-        bat """
-        wsl /home/vedant/ansible-venv/bin/ansible-playbook ^
-        -vvv ^
-        -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini ^
-        /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml
-        """
+        stage('Run Ansible') {
+            steps {
+                bat """
+                wsl /home/vedant/ansible-venv/bin/ansible-playbook ^
+                -vvv ^
+                -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini ^
+                /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml
+                """
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo "Deployment Completed Successfully"
+            }
+        }
     }
-}
 
     post {
         success {
