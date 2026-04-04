@@ -114,15 +114,25 @@ ${env.APP_ID} ansible_connection=aws_ssm ansible_user=ec2-user
         }
 
         stage('Run Ansible') {
-            steps {
-                bat """
-                wsl /home/vedant/ansible-venv/bin/ansible-playbook ^
-                -vvv ^
-                -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini ^
-                /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml
-                """
-            }
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'aws-creds',
+                usernameVariable: 'AWS_ACCESS_KEY_ID',
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            )
+        ]) {
+            bat """
+            wsl bash -c "export AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID% && \
+            export AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY% && \
+            export AWS_DEFAULT_REGION=us-east-1 && \
+            /home/vedant/ansible-venv/bin/ansible-playbook -vvv \
+            -i /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/inventory.ini \
+            /mnt/c/ProgramData/Jenkins/.jenkins/workspace/demo-1/ansible/playbook.yml"
+            """
         }
+    }
+}
 
         stage('Health Check') {
             steps {
