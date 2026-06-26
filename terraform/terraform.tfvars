@@ -11,4 +11,4 @@ app_sg_id          = "sg-0d3821ba83df7a69e"
 
 ami_id             = "ami-01b14b7ad41e17ba4"
 instance_type      = "t3.micro"
-key_name           = "my-tf-key"
+
