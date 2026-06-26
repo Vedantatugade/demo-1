@@ -1,11 +1,11 @@
 
-vpc_id             = "vpc-0aa11baeff2650d07"
-public_subnet_id   = "subnet-00c02fed85fb26dc3"
-private_subnet_id  = "subnet-0231b6a123f0cb952"
+vpc_id             = "vpc-003061125629c0d8c"
+public_subnet_id   = "subnet-0179d6e82fbbda52d"
+private_subnet_id  = "subnet-065ade6736f72508d"
 
 
-web_sg_id          = "sg-074b9145156051321"
-app_sg_id          = "sg-01309fae72eb2cc55"
+web_sg_id          = "sg-016a30e79487f3164"
+app_sg_id          = "sg-0d3821ba83df7a69e"
 
 
 
