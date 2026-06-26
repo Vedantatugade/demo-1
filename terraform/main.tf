@@ -39,7 +39,7 @@ data "aws_security_group" "app_sg" {
 resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = "t3.micro"
-  key_name      = var.key_name
+  
 
   subnet_id              = data.aws_subnet.public_subnet.id
   vpc_security_group_ids = [data.aws_security_group.web_sg.id]
@@ -61,7 +61,7 @@ resource "aws_instance" "web" {
 resource "aws_instance" "app" {
   ami           = var.ami_id
   instance_type = "t3.micro"
-  key_name      = var.key_name
+  
 
   subnet_id              = data.aws_subnet.private_subnet.id
   vpc_security_group_ids = [data.aws_security_group.app_sg.id]
