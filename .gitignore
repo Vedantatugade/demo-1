@@ -1,0 +1,12 @@
+node_modules/
+.env
+*.tfstate
+*.tfvars
+.terraform/
+*.pem
+*.log
+.vscode/
+config.js
+
+# sensitive files
+application-code/app-tier/DbConfig.js
