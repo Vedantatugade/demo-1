@@ -150,10 +150,10 @@ stage('Wait for EC2 Boot') {
 
     post {
         success {
-            echo '✅ Deployment Successful'
+            echo 'Deployment Successful'
         }
         failure {
-            echo '❌ Deployment Failed'
+            echo 'Deployment Failed'
         }
         always {
             cleanWs()
